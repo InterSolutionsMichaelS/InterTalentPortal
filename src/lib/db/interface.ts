@@ -18,6 +18,8 @@ export interface ProfileSearchParams {
   office?: string;
   page?: number;
   limit?: number;
+  sortBy?: 'name' | 'location' | 'profession';
+  sortDirection?: 'asc' | 'desc';
 }
 
 /**
@@ -54,7 +56,12 @@ export interface OfficeInfo {
  */
 export interface IDatabase {
   // Profile operations
-  getAllProfiles(page?: number, limit?: number): Promise<PaginatedProfiles>;
+  getAllProfiles(
+    page?: number,
+    limit?: number,
+    sortBy?: 'name' | 'location' | 'profession',
+    sortDirection?: 'asc' | 'desc'
+  ): Promise<PaginatedProfiles>;
   getProfileById(id: string): Promise<Profile | null>;
   searchProfiles(params: ProfileSearchParams): Promise<PaginatedProfiles>;
 

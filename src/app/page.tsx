@@ -1,5 +1,9 @@
 import HeroSearch from '@/components/home/HeroSearch';
-import ProfileCard from '@/components/profiles/ProfileCard';
+import SearchFilters from '@/components/search/SearchFilters';
+import SortControls from '@/components/search/SortControls';
+import ProfileResults from '@/components/search/ProfileResults';
+import Pagination from '@/components/search/Pagination';
+import EmptyState from '@/components/ui/EmptyState';
 import { db } from '@/lib/db';
 
 export default async function Home({
@@ -16,20 +20,38 @@ export default async function Home({
   const state = typeof params.state === 'string' ? params.state : undefined;
   const professionType =
     typeof params.profession === 'string' ? params.profession : undefined;
+  const office = typeof params.office === 'string' ? params.office : undefined;
+  const page = typeof params.page === 'string' ? parseInt(params.page) : 1;
+  const sortBy =
+    typeof params.sortBy === 'string' &&
+    ['name', 'location', 'profession'].includes(params.sortBy)
+      ? (params.sortBy as 'name' | 'location' | 'profession')
+      : 'name';
+  const sortDirection =
+    typeof params.sortDirection === 'string' &&
+    ['asc', 'desc'].includes(params.sortDirection)
+      ? (params.sortDirection as 'asc' | 'desc')
+      : 'asc';
+  const limit = 20;
 
   // Fetch profiles - either search or get all
   let result;
-  if (keywords || city || state || professionType) {
+  const hasFilters = keywords || city || state || professionType || office;
+
+  if (hasFilters) {
     result = await db.searchProfiles({
       query: keywords,
       city,
       state,
       professionType,
-      page: 1,
-      limit: 20,
+      office,
+      page,
+      limit,
+      sortBy,
+      sortDirection,
     });
   } else {
-    result = await db.getAllProfiles(1, 20);
+    result = await db.getAllProfiles(page, limit, sortBy, sortDirection);
   }
 
   return (
@@ -37,32 +59,66 @@ export default async function Home({
       {/* Hero Section with Search */}
       <HeroSearch />
 
-      {/* Recommended Candidates Section */}
+      {/* Main Content */}
       <section className="container mx-auto px-4 py-12">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Recommended Candidates
-          </h2>
-          <p className="text-gray-600">
-            Based on your criteria, we found{' '}
-            <span className="font-semibold text-gray-900">{result.total}</span>{' '}
-            talented professionals
-          </p>
-        </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Filters Sidebar */}
+          <aside className="lg:w-80 shrink-0">
+            <SearchFilters />
+          </aside>
 
-        {/* Profile Cards Grid */}
-        <div className="space-y-4">
-          {result.profiles.map((profile) => (
-            <ProfileCard key={profile.id} profile={profile} />
-          ))}
-        </div>
+          {/* Results Area */}
+          <div className="flex-1">
+            {/* Results Header */}
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                {hasFilters ? 'Search Results' : 'Recommended Candidates'}
+              </h2>
+              <p className="text-gray-600">
+                {result.total > 0 ? (
+                  <>
+                    Found{' '}
+                    <span className="font-semibold text-gray-900">
+                      {result.total}
+                    </span>{' '}
+                    {result.total === 1 ? 'candidate' : 'candidates'}
+                  </>
+                ) : (
+                  'No candidates found'
+                )}
+              </p>
+            </div>
 
-        {/* Pagination Info */}
-        {result.total > result.limit && (
-          <div className="mt-8 text-center text-gray-600">
-            Showing {result.profiles.length} of {result.total} candidates
+            {/* Sort Controls */}
+            {result.profiles.length > 0 && <SortControls />}
+
+            {/* Profile Cards or Empty State */}
+            {result.profiles.length > 0 ? (
+              <>
+                <ProfileResults profiles={result.profiles} />
+
+                {/* Pagination */}
+                <Pagination
+                  currentPage={result.page}
+                  totalPages={result.totalPages}
+                  totalResults={result.total}
+                  resultsPerPage={result.limit}
+                />
+              </>
+            ) : (
+              <EmptyState
+                title="No candidates found"
+                message={
+                  hasFilters
+                    ? "We couldn't find any candidates matching your search criteria. Try adjusting your filters or search terms."
+                    : 'No candidates are currently available in our database.'
+                }
+                actionLabel="Clear all filters"
+                actionHref="/"
+              />
+            )}
           </div>
-        )}
+        </div>
       </section>
     </div>
   );

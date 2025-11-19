@@ -20,14 +20,32 @@ export class PostgresDatabase implements IDatabase {
   ) {}
 
   /**
-   * Get all profiles with pagination
+   * Get all profiles with pagination and sorting
    */
   async getAllProfiles(
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    sortBy: 'name' | 'location' | 'profession' = 'name',
+    sortDirection: 'asc' | 'desc' = 'asc'
   ): Promise<PaginatedProfiles> {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
+
+    // Determine sort column
+    let sortColumn: string;
+    switch (sortBy) {
+      case 'name':
+        sortColumn = 'first_name';
+        break;
+      case 'location':
+        sortColumn = 'city';
+        break;
+      case 'profession':
+        sortColumn = 'profession_type';
+        break;
+      default:
+        sortColumn = 'first_name';
+    }
 
     // Get total count
     const { count } = await this.client
@@ -35,12 +53,12 @@ export class PostgresDatabase implements IDatabase {
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true);
 
-    // Get paginated data
+    // Get paginated data with sorting
     const { data, error } = await this.client
       .from('profiles')
       .select('*')
       .eq('is_active', true)
-      .order('created_at', { ascending: false })
+      .order(sortColumn, { ascending: sortDirection === 'asc' })
       .range(from, to);
 
     if (error) {
@@ -91,9 +109,27 @@ export class PostgresDatabase implements IDatabase {
       office,
       page = 1,
       limit = 20,
+      sortBy = 'name',
+      sortDirection = 'asc',
     } = params;
     const from = (page - 1) * limit;
     const to = from + limit - 1;
+
+    // Determine sort column
+    let sortColumn: string;
+    switch (sortBy) {
+      case 'name':
+        sortColumn = 'first_name';
+        break;
+      case 'location':
+        sortColumn = 'city';
+        break;
+      case 'profession':
+        sortColumn = 'profession_type';
+        break;
+      default:
+        sortColumn = 'first_name';
+    }
 
     let queryBuilder = this.client
       .from('profiles')
@@ -124,9 +160,9 @@ export class PostgresDatabase implements IDatabase {
       );
     }
 
-    // Execute query with pagination
+    // Execute query with pagination and sorting
     const { data, error, count } = await queryBuilder
-      .order('created_at', { ascending: false })
+      .order(sortColumn, { ascending: sortDirection === 'asc' })
       .range(from, to);
 
     if (error) {
