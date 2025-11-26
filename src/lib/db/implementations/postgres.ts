@@ -109,7 +109,7 @@ export class PostgresDatabase implements IDatabase {
     const {
       query,
       keywords,
-      professionType,
+      professionTypes,
       city,
       state,
       zipCode,
@@ -145,8 +145,14 @@ export class PostgresDatabase implements IDatabase {
       .eq('is_active', true);
 
     // Apply filters
-    if (professionType) {
-      queryBuilder = queryBuilder.eq('profession_type', professionType);
+    // Apply profession filter (support multiple professions with OR logic)
+    if (params.professionTypes && params.professionTypes.length > 0) {
+      // Multiple professions selected (OR logic)
+      // Use case-insensitive matching with ILIKE for each profession
+      const professionConditions = params.professionTypes
+        .map((p) => `profession_type.ilike.${p}`)
+        .join(',');
+      queryBuilder = queryBuilder.or(professionConditions);
     }
 
     // IMPORTANT: Only apply city/state filters if NOT doing radius search
@@ -261,11 +267,12 @@ export class PostgresDatabase implements IDatabase {
                 .in('zip_code', nearbyZipCodes);
 
               // Apply other filters
-              if (professionType) {
-                optimizedQuery = optimizedQuery.eq(
-                  'profession_type',
-                  professionType
-                );
+              // Apply profession filter
+              if (params.professionTypes && params.professionTypes.length > 0) {
+                const professionConditions = params.professionTypes
+                  .map((p) => `profession_type.ilike.${p}`)
+                  .join(',');
+                optimizedQuery = optimizedQuery.or(professionConditions);
               }
               if (office) {
                 optimizedQuery = optimizedQuery.eq('office', office);
@@ -330,11 +337,12 @@ export class PostgresDatabase implements IDatabase {
               .eq('is_active', true);
 
             // Apply same filters as main query
-            if (professionType) {
-              preFilterQuery = preFilterQuery.eq(
-                'profession_type',
-                professionType
-              );
+            // Apply profession filter
+            if (params.professionTypes && params.professionTypes.length > 0) {
+              const professionConditions = params.professionTypes
+                .map((p) => `profession_type.ilike.${p}`)
+                .join(',');
+              preFilterQuery = preFilterQuery.or(professionConditions);
             }
             if (office) {
               preFilterQuery = preFilterQuery.eq('office', office);

@@ -12,7 +12,7 @@ import type { Profile } from './supabase';
 export interface ProfileSearchParams {
   query?: string; // Single keyword (legacy, kept for hero search)
   keywords?: string[]; // Multiple keywords for OR search
-  professionType?: string;
+  professionTypes?: string[]; // Multiple professions for OR search (from hero OR sidebar)
   city?: string;
   state?: string;
   zipCode?: string;

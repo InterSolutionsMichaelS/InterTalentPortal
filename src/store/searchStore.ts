@@ -62,8 +62,7 @@ const STATE_NAME_TO_CODE: Record<string, string> = {
 };
 
 export interface SearchFilters {
-  // Hero search fields
-  profession: string;
+  // Hero search field
   location: string; // Combined city/state/zip input from hero
 
   // Parsed location fields (synced with hero)
@@ -76,7 +75,7 @@ export interface SearchFilters {
   zipCodes: string[]; // Array of zip codes for multiple tags
   radius: number;
   radiusEnabled: boolean; // Toggle for radius search
-  selectedProfessions: string[];
+  selectedProfessions: string[]; // Array of professions (from hero OR sidebar)
 
   // Bookmarks (Phase 6)
   bookmarkedIds: string[];
@@ -88,7 +87,6 @@ export interface SearchFilters {
 
 interface SearchStore extends SearchFilters {
   // Actions
-  setProfession: (profession: string) => void;
   setLocation: (location: string) => void;
   setCity: (city: string) => void;
   setState: (state: string) => void;
@@ -103,6 +101,8 @@ interface SearchStore extends SearchFilters {
   setRadiusEnabled: (enabled: boolean) => void;
   setSelectedProfessions: (professions: string[]) => void;
   toggleProfession: (profession: string) => void;
+  addProfession: (profession: string) => void; // Add single profession (for hero search)
+  removeProfession: (profession: string) => void; // Remove single profession
 
   // Bookmark actions
   toggleBookmark: (profileId: string) => void;
@@ -118,7 +118,6 @@ interface SearchStore extends SearchFilters {
 }
 
 const initialState: SearchFilters = {
-  profession: '',
   location: '',
   city: '',
   state: '',
@@ -137,8 +136,6 @@ export const useSearchStore = create<SearchStore>()(
   persist(
     (set, get) => ({
       ...initialState,
-
-      setProfession: (profession) => set({ profession }),
 
       setLocation: (location) => set({ location }),
 
@@ -186,6 +183,22 @@ export const useSearchStore = create<SearchStore>()(
           selectedProfessions: state.selectedProfessions.includes(profession)
             ? state.selectedProfessions.filter((p) => p !== profession)
             : [...state.selectedProfessions, profession],
+        })),
+
+      addProfession: (profession) =>
+        set((state) => ({
+          selectedProfessions:
+            profession.trim() &&
+            !state.selectedProfessions.includes(profession.trim())
+              ? [...state.selectedProfessions, profession.trim()]
+              : state.selectedProfessions,
+        })),
+
+      removeProfession: (profession) =>
+        set((state) => ({
+          selectedProfessions: state.selectedProfessions.filter(
+            (p) => p !== profession
+          ),
         })),
 
       toggleBookmark: (profileId) =>
@@ -277,7 +290,6 @@ export const useSearchStore = create<SearchStore>()(
         const state = get();
         const params = new URLSearchParams();
 
-        if (state.profession) params.set('profession', state.profession);
         if (state.city) params.set('city', state.city);
         if (state.state) params.set('state', state.state);
         if (state.zipCode) params.set('zip', state.zipCode);
@@ -297,6 +309,7 @@ export const useSearchStore = create<SearchStore>()(
           params.set('radius', state.radius.toString());
         }
 
+        // Handle professions (from hero search OR sidebar)
         if (state.selectedProfessions.length > 0) {
           params.set('professions', state.selectedProfessions.join(','));
         }

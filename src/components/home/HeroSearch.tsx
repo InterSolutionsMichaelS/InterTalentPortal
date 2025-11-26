@@ -1,23 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchStore } from '@/store/searchStore';
 
 export default function HeroSearch() {
   const router = useRouter();
   const [professions, setProfessions] = useState<string[]>([]);
+  const dropdownChangedRef = useRef(false); // Track if user changed the dropdown
 
   // Use Zustand store for state management
-  const profession = useSearchStore((state) => state.profession);
   const location = useSearchStore((state) => state.location);
-  const setProfession = useSearchStore((state) => state.setProfession);
   const setLocation = useSearchStore((state) => state.setLocation);
   const parseLocation = useSearchStore((state) => state.parseLocation);
   const addZipCode = useSearchStore((state) => state.addZipCode);
   const setZipCode = useSearchStore((state) => state.setZipCode);
+  const selectedProfessions = useSearchStore(
+    (state) => state.selectedProfessions
+  );
+  const setSelectedProfessions = useSearchStore(
+    (state) => state.setSelectedProfessions
+  );
   const buildQueryParams = useSearchStore((state) => state.buildQueryParams);
   const setIsLoading = useSearchStore((state) => state.setIsLoading);
+
+  // Derive dropdown value from store: only show if there's exactly one profession
+  const selectedProfession =
+    selectedProfessions.length === 1 ? selectedProfessions[0] : '';
 
   // Fetch professions on mount
   useEffect(() => {
@@ -36,10 +45,25 @@ export default function HeroSearch() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Only update profession filters if the user explicitly changed the dropdown
+    // Don't touch professions if dropdown is in "ambiguous" state (multiple selected in sidebar)
+    if (dropdownChangedRef.current) {
+      if (selectedProfession) {
+        // Replace any existing profession selection (hero search = single selection)
+        setSelectedProfessions([selectedProfession]);
+      } else {
+        // Clear profession filter when user explicitly selected "Select Profession"
+        setSelectedProfessions([]);
+      }
+      // Reset the flag after using it
+      dropdownChangedRef.current = false;
+    }
+    // If dropdownChangedRef.current is false, leave selectedProfessions unchanged
+
     // Parse location before building query params
     parseLocation();
 
-    // Small delay to ensure parseLocation has updated the store
+    // Small delay to ensure state updates
     setTimeout(() => {
       // Get the latest zipCode from store after parsing
       const currentZipCode = useSearchStore.getState().zipCode;
@@ -59,7 +83,6 @@ export default function HeroSearch() {
       const newSearch = params.toString();
 
       // Only show loading and navigate if the search is actually different
-      // This prevents unnecessary loading states when clicking search without changes
       const currentSearch = window.location.search.substring(1);
       if (newSearch !== currentSearch) {
         setIsLoading(true);
@@ -120,8 +143,18 @@ export default function HeroSearch() {
                 />
               </svg>
               <select
-                value={profession}
-                onChange={(e) => setProfession(e.target.value)}
+                value={selectedProfession}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  dropdownChangedRef.current = true; // Mark that user changed the dropdown
+                  if (value) {
+                    // Update store immediately when user selects from dropdown
+                    setSelectedProfessions([value]);
+                  } else {
+                    // Clear profession filter when user selects "Select Profession"
+                    setSelectedProfessions([]);
+                  }
+                }}
                 className="flex-1 outline-none text-gray-800 placeholder-gray-400 bg-transparent text-sm md:text-base min-w-0"
               >
                 <option value="">Select Profession</option>

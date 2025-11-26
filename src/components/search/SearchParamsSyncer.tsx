@@ -15,7 +15,6 @@ export default function SearchParamsSyncer() {
   const hasInitialized = useRef(false);
 
   // Extract only setters (stable references)
-  const setProfession = useSearchStore((state) => state.setProfession);
   const setCity = useSearchStore((state) => state.setCity);
   const setState = useSearchStore((state) => state.setState);
   const setZipCode = useSearchStore((state) => state.setZipCode);
@@ -37,7 +36,6 @@ export default function SearchParamsSyncer() {
     // Only sync once on mount or when URL changes
 
     // Sync URL params to store
-    const profession = searchParams.get('profession') || '';
     const city = searchParams.get('city') || '';
     const state = searchParams.get('state') || '';
     const zip = searchParams.get('zip') || '';
@@ -46,12 +44,16 @@ export default function SearchParamsSyncer() {
     const radiusParam = searchParams.get('radius');
     const radius = radiusParam ? parseInt(radiusParam) : 10;
     const radiusEnabled = radiusParam !== null; // If radius in URL, it's enabled
-    const professions =
-      searchParams.get('professions')?.split(',').filter(Boolean) || [];
+    const professionsParam = searchParams.get('professions') || '';
+    const professions = professionsParam
+      ? professionsParam
+          .split(',')
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : [];
     const showBookmarks = searchParams.get('bookmarks') === 'true';
 
     // Update store (these are stable functions)
-    setProfession(profession);
     setCity(city);
     setState(state);
     setZipCode(zip);

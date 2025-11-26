@@ -25,8 +25,8 @@ export default async function Home({
   const zipCode = typeof params.zip === 'string' ? params.zip : undefined;
   const radius =
     typeof params.radius === 'string' ? parseInt(params.radius) : undefined;
-  const professionType =
-    typeof params.profession === 'string' ? params.profession : undefined;
+  const professions =
+    typeof params.professions === 'string' ? params.professions : undefined;
   const office = typeof params.office === 'string' ? params.office : undefined;
   const sortBy =
     typeof params.sortBy === 'string' &&
@@ -41,13 +41,7 @@ export default async function Home({
 
   // Single query to fetch all matching profiles
   const hasFilters =
-    keywords ||
-    city ||
-    state ||
-    professionType ||
-    office ||
-    zipCode ||
-    zipCodes;
+    keywords || city || state || professions || office || zipCode || zipCodes;
 
   let result;
   if (hasFilters) {
@@ -67,6 +61,14 @@ export default async function Home({
           .filter((z) => z)
       : undefined;
 
+    // Parse professions into array (from hero search single OR sidebar multi-select)
+    const professionsArray = professions
+      ? professions
+          .split(',')
+          .map((p) => p.trim())
+          .filter((p) => p)
+      : undefined;
+
     result = await db.searchProfiles({
       keywords: keywordsArray,
       zipCodes: zipCodesArray,
@@ -74,7 +76,7 @@ export default async function Home({
       state,
       zipCode,
       radius,
-      professionType,
+      professionTypes: professionsArray,
       office,
       page: 1,
       limit: 1000, // Fetch up to 1000 profiles (adjust as needed)
@@ -93,7 +95,7 @@ export default async function Home({
     state,
     zipCode,
     radius,
-    professionType,
+    professions,
     office,
     sortBy,
     sortDirection,
