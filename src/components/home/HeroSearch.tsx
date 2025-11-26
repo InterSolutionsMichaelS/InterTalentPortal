@@ -65,18 +65,26 @@ export default function HeroSearch() {
 
     // Small delay to ensure state updates
     setTimeout(() => {
-      // Get the latest zipCode from store after parsing
+      // Get the latest parsed values from store after parsing
       const currentZipCode = useSearchStore.getState().zipCode;
+      const currentCity = useSearchStore.getState().city;
+      const currentState = useSearchStore.getState().state;
 
       // If location was a zip code, add it to zipCodes array for tag display
       if (currentZipCode) {
         addZipCode(currentZipCode);
         // Clear the legacy single zipCode field to avoid conflicts
         setZipCode('');
+        // Clear the location input since zip code becomes a tag
+        setLocation('');
+      } else if (currentCity || currentState) {
+        // If it's a city or state, keep it displayed in the input
+        // Don't clear it because it doesn't appear as a tag
+        // User should see what they searched for
+      } else {
+        // If nothing was parsed, clear the input
+        setLocation('');
       }
-
-      // Clear the location input after adding to filters
-      setLocation('');
 
       // Build query params from store
       const params = buildQueryParams();
@@ -195,6 +203,13 @@ export default function HeroSearch() {
                 placeholder="Zip, City or State"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                onBlur={() => {
+                  // Parse location immediately when user leaves the input field
+                  // This ensures the store is always synced with the input value
+                  if (location.trim()) {
+                    parseLocation();
+                  }
+                }}
                 className="flex-1 outline-none text-gray-800 placeholder-gray-400 text-sm md:text-base min-w-0 caret-gray-800"
               />
             </div>
