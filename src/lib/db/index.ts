@@ -4,6 +4,7 @@
  */
 
 import { PostgresDatabase } from './implementations/postgres';
+import { AzureSqlDatabase } from './implementations/azure-sql';
 import { supabase, supabaseAdmin } from './supabase';
 import type { IDatabase } from './interface';
 
@@ -20,10 +21,10 @@ function createDatabase(): IDatabase {
     return new PostgresDatabase(supabase, supabaseAdmin);
   }
 
-  // Future: Azure SQL implementation
-  // if (dbType === 'azure-sql') {
-  //   return new AzureSqlDatabase(connectionPool);
-  // }
+  if (dbType === 'azure-sql') {
+    // Production: Azure SQL Server
+    return new AzureSqlDatabase();
+  }
 
   throw new Error(`Unknown database type: ${dbType}`);
 }
