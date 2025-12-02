@@ -1,0 +1,41 @@
+# Dependencies - Azure will install these
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+
+# Build output - Azure will build this
+/.next/
+/out/
+/build/
+
+# Environment files - use Azure App Settings instead
+.env*
+
+# Data folder
+/data/
+
+# Development/Git files
+.git/
+.github/
+.vscode/
+
+# Markdown files
+*.md
+
+# Testing
+/coverage/
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel
