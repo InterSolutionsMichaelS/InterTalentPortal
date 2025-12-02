@@ -55,14 +55,38 @@ export class AzureSqlDatabase implements IDatabase {
 
   private rowToProfile(row: Record<string, unknown>): Profile {
     const { first_name, last_initial } = this.parseName(row.Name as string);
-    const isActive =
-      row.Status === 'Active' ||
-      row.Status === 'active' ||
-      row.OnAssignment === true ||
-      row.OnAssignment === 1;
 
-    // Handle both PersonID and PersonId (case variations)
+    // Handle OnAssignment: bit (true/false/1/0) in InterTalentShowcase, varchar ("Yes"/"No") in EmployeeImport
+    const onAssignment =
+      row.OnAssignment === true ||
+      row.OnAssignment === 1 ||
+      row.OnAssignment === 'Yes' ||
+      row.OnAssignment === 'yes';
+
+    const isActive =
+      row.Status === 'Active' || row.Status === 'active' || onAssignment;
+
+    // Handle both PersonID and PersonId (case variations between tables)
     const personId = row.PersonID || row.PersonId || row.personId || '';
+
+    // Handle ZipCode: varchar(10) in InterTalentShowcase, bigint in EmployeeImport
+    const zipCode = row.ZipCode ? String(row.ZipCode) : '';
+
+    // Handle HireDate: datetime in InterTalentShowcase, varchar in EmployeeImport
+    let createdAt: string;
+    if (row.HireDate) {
+      try {
+        const hireDate =
+          row.HireDate instanceof Date
+            ? row.HireDate
+            : new Date(row.HireDate as string);
+        createdAt = hireDate.toISOString();
+      } catch {
+        createdAt = new Date().toISOString();
+      }
+    } else {
+      createdAt = new Date().toISOString();
+    }
 
     return {
       id: String(personId),
@@ -70,16 +94,14 @@ export class AzureSqlDatabase implements IDatabase {
       last_initial,
       city: (row.City as string) || '',
       state: (row.State as string) || '',
-      zip_code: String(row.ZipCode || ''),
+      zip_code: zipCode,
       professional_summary: (row.ProfessionalSummary as string) || '',
       office: (row.Office as string) || '',
       profession_type: (row.ProfessionType as string) || '',
       skills: row.Skill ? [row.Skill as string] : null,
       source_file: null,
       is_active: isActive,
-      created_at: row.HireDate
-        ? new Date(row.HireDate as string).toISOString()
-        : new Date().toISOString(),
+      created_at: createdAt,
       updated_at: row.RunTime
         ? new Date(row.RunTime as string).toISOString()
         : new Date().toISOString(),
