@@ -20,7 +20,9 @@ import {
   getCityLocation,
 } from '../../geospatial';
 
-const TABLE_NAME = 'InterTalentShowcase';
+// Use EmployeeImport for testing (client's staging table with 14,362 records)
+// Change back to 'InterTalentShowcase' when client's pipeline is complete
+const TABLE_NAME = 'EmployeeImport';
 
 export class AzureSqlDatabase implements IDatabase {
   private pool: sql.ConnectionPool | null = null;
@@ -59,13 +61,16 @@ export class AzureSqlDatabase implements IDatabase {
       row.OnAssignment === true ||
       row.OnAssignment === 1;
 
+    // Handle both PersonID and PersonId (case variations)
+    const personId = row.PersonID || row.PersonId || row.personId || '';
+
     return {
-      id: String(row.PersonID),
+      id: String(personId),
       first_name,
       last_initial,
       city: (row.City as string) || '',
       state: (row.State as string) || '',
-      zip_code: (row.ZipCode as string) || '',
+      zip_code: String(row.ZipCode || ''),
       professional_summary: (row.ProfessionalSummary as string) || '',
       office: (row.Office as string) || '',
       profession_type: (row.ProfessionType as string) || '',
