@@ -1,6 +1,10 @@
 /**
  * Azure SQL Database Implementation
- * Connects to InterTalentShowcase table with PascalCase columns
+ * Uses native GEOGRAPHY column for fast spatial queries
+ *
+ * REFACTORED: Now uses direct spatial queries instead of zip list approach
+ * - 332ms spatial query vs 20 minutes per-profile geocoding
+ * - Returns distance information for radius searches
  */
 
 import sql from 'mssql';
@@ -13,16 +17,14 @@ import type {
   OfficeInfo,
 } from '../interface';
 import type { Profile } from '../supabase';
-import {
-  getZipCodesWithinRadius,
-  getProfilesWithinRadius,
-  getZipLocation,
-  getCityLocation,
-} from '../../geospatial';
+import { getZipLocation, getCityLocation } from '../../geospatial';
 
-// Use EmployeeImport for testing (client's staging table with 14,362 records)
-// Change back to 'InterTalentShowcase' when client's pipeline is complete
-const TABLE_NAME = 'EmployeeImport';
+// Use RayTestShowcase for testing (has GeoLocation column with spatial index)
+// Change to 'InterTalentShowcase' when client's pipeline is complete
+const TABLE_NAME = 'RayTestShowcase';
+
+// Check if table has GeoLocation column
+let hasGeoLocationColumn: boolean | null = null;
 
 export class AzureSqlDatabase implements IDatabase {
   private pool: sql.ConnectionPool | null = null;
@@ -32,6 +34,49 @@ export class AzureSqlDatabase implements IDatabase {
       this.pool = await getPool();
     }
     return this.pool;
+  }
+
+  /**
+   * Check if the table has a GeoLocation column with data
+   * Cached after first check for performance
+   */
+  private async checkGeoLocationSupport(): Promise<boolean> {
+    if (hasGeoLocationColumn !== null) {
+      return hasGeoLocationColumn;
+    }
+
+    try {
+      const pool = await this.getConnection();
+
+      // Check if column exists
+      const columnCheck = await pool.request().query(`
+        SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_NAME = '${TABLE_NAME}' AND COLUMN_NAME = 'GeoLocation'
+      `);
+
+      if (columnCheck.recordset[0].cnt === 0) {
+        console.log(`Table ${TABLE_NAME} does not have GeoLocation column`);
+        hasGeoLocationColumn = false;
+        return false;
+      }
+
+      // Check if there's data
+      const dataCheck = await pool.request().query(`
+        SELECT COUNT(*) as cnt FROM ${TABLE_NAME} WHERE GeoLocation IS NOT NULL
+      `);
+
+      const count = dataCheck.recordset[0].cnt;
+      hasGeoLocationColumn = count > 0;
+      console.log(
+        `Table ${TABLE_NAME} has ${count} records with GeoLocation - spatial queries ${hasGeoLocationColumn ? 'ENABLED' : 'DISABLED'}`
+      );
+
+      return hasGeoLocationColumn;
+    } catch (error) {
+      console.error('Error checking GeoLocation support:', error);
+      hasGeoLocationColumn = false;
+      return false;
+    }
   }
 
   private parseName(fullName: string | null): {
@@ -53,10 +98,13 @@ export class AzureSqlDatabase implements IDatabase {
     };
   }
 
-  private rowToProfile(row: Record<string, unknown>): Profile {
+  private rowToProfile(
+    row: Record<string, unknown>,
+    distanceMiles?: number
+  ): Profile {
     const { first_name, last_initial } = this.parseName(row.Name as string);
 
-    // Handle OnAssignment: bit (true/false/1/0) in InterTalentShowcase, varchar ("Yes"/"No") in EmployeeImport
+    // Handle OnAssignment: bit (true/false/1/0) or varchar ("Yes"/"No")
     const onAssignment =
       row.OnAssignment === true ||
       row.OnAssignment === 1 ||
@@ -69,10 +117,10 @@ export class AzureSqlDatabase implements IDatabase {
     // Handle both PersonID and PersonId (case variations between tables)
     const personId = row.PersonID || row.PersonId || row.personId || '';
 
-    // Handle ZipCode: varchar(10) in InterTalentShowcase, bigint in EmployeeImport
+    // Handle ZipCode: varchar(10) or bigint
     const zipCode = row.ZipCode ? String(row.ZipCode) : '';
 
-    // Handle HireDate: datetime in InterTalentShowcase, varchar in EmployeeImport
+    // Handle HireDate: datetime or varchar
     let createdAt: string;
     if (row.HireDate) {
       try {
@@ -88,7 +136,7 @@ export class AzureSqlDatabase implements IDatabase {
       createdAt = new Date().toISOString();
     }
 
-    return {
+    const profile: Profile = {
       id: String(personId),
       first_name,
       last_initial,
@@ -106,6 +154,14 @@ export class AzureSqlDatabase implements IDatabase {
         ? new Date(row.RunTime as string).toISOString()
         : new Date().toISOString(),
     };
+
+    // Add distance if available (for radius searches)
+    if (distanceMiles !== undefined) {
+      (profile as Profile & { distance_miles?: number }).distance_miles =
+        Math.round(distanceMiles * 100) / 100;
+    }
+
+    return profile;
   }
 
   private getActiveCondition(): string {
@@ -182,6 +238,228 @@ export class AzureSqlDatabase implements IDatabase {
     return this.rowToProfile(result.recordset[0]);
   }
 
+  /**
+   * Perform spatial radius search using Azure SQL GEOGRAPHY
+   * Returns profiles within radius, sorted by distance
+   */
+  private async spatialRadiusSearch(
+    centerLat: number,
+    centerLng: number,
+    radiusMiles: number,
+    additionalConditions: string[],
+    page: number,
+    limit: number,
+    sortBy: string,
+    sortDirection: string
+  ): Promise<PaginatedProfiles> {
+    const pool = await this.getConnection();
+    const offset = (page - 1) * limit;
+    const radiusMeters = radiusMiles * 1609.344;
+
+    // Build WHERE clause
+    const activeCondition = this.getActiveCondition();
+    const spatialCondition =
+      'GeoLocation IS NOT NULL AND GeoLocation.STDistance(@center) <= @radiusMeters';
+    const allConditions = [
+      activeCondition,
+      spatialCondition,
+      ...additionalConditions,
+    ];
+    const whereClause = allConditions.join(' AND ');
+
+    // Count total matches
+    const countRequest = pool.request();
+    countRequest.input('centerLat', sql.Float, centerLat);
+    countRequest.input('centerLng', sql.Float, centerLng);
+    countRequest.input('radiusMeters', sql.Float, radiusMeters);
+
+    const countResult = await countRequest.query(`
+      DECLARE @center GEOGRAPHY = geography::Point(@centerLat, @centerLng, 4326);
+      SELECT COUNT(*) as total FROM ${TABLE_NAME} WHERE ${whereClause}
+    `);
+    const total = countResult.recordset[0].total;
+
+    if (total === 0) {
+      return { profiles: [], total: 0, page, limit, totalPages: 0 };
+    }
+
+    // For radius searches, sort by distance first (nearest), then by requested field
+    let orderClause: string;
+    let sortColumn: string;
+    switch (sortBy) {
+      case 'name':
+        sortColumn = 'Name';
+        break;
+      case 'location':
+        sortColumn = 'City';
+        break;
+      case 'profession':
+        sortColumn = 'ProfessionType';
+        break;
+      case 'distance':
+        sortColumn = 'distance_miles';
+        break;
+      default:
+        sortColumn = 'Name';
+    }
+
+    if (sortBy === 'distance') {
+      orderClause = `GeoLocation.STDistance(@center) ${sortDirection.toUpperCase()}`;
+    } else {
+      // Sort by distance first (nearest), then by requested field
+      orderClause = `GeoLocation.STDistance(@center) ASC, ${sortColumn} ${sortDirection.toUpperCase()}`;
+    }
+
+    // Get data with distance
+    const dataRequest = pool.request();
+    dataRequest.input('centerLat', sql.Float, centerLat);
+    dataRequest.input('centerLng', sql.Float, centerLng);
+    dataRequest.input('radiusMeters', sql.Float, radiusMeters);
+    dataRequest.input('offset', sql.Int, offset);
+    dataRequest.input('limit', sql.Int, limit);
+
+    const dataResult = await dataRequest.query(`
+      DECLARE @center GEOGRAPHY = geography::Point(@centerLat, @centerLng, 4326);
+      
+      SELECT *, GeoLocation.STDistance(@center) / 1609.344 as distance_miles
+      FROM ${TABLE_NAME}
+      WHERE ${whereClause}
+      ORDER BY ${orderClause}
+      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+    `);
+
+    const profiles = dataResult.recordset.map((row: Record<string, unknown>) =>
+      this.rowToProfile(row, row.distance_miles as number)
+    );
+
+    return {
+      profiles,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Perform spatial radius search with MULTIPLE center points
+   * Returns profiles within radius of ANY center, with distance to nearest center
+   * Uses UNION approach for efficient multi-center queries
+   */
+  private async multiCenterSpatialRadiusSearch(
+    centers: Array<{ lat: number; lng: number; zipCode: string }>,
+    radiusMiles: number,
+    additionalConditions: string[],
+    page: number,
+    limit: number,
+    sortBy: string,
+    sortDirection: string
+  ): Promise<PaginatedProfiles> {
+    const pool = await this.getConnection();
+    const offset = (page - 1) * limit;
+    const radiusMeters = radiusMiles * 1609.344;
+
+    // Build WHERE clause for additional conditions
+    const activeCondition = this.getActiveCondition();
+    const conditionsForWhere = [activeCondition, ...additionalConditions]
+      .filter((c) => c)
+      .join(' AND ');
+
+    // Build UNION query for all centers
+    // Each center contributes profiles within its radius, with calculated distance
+    const centerQueries = centers
+      .map(
+        (center) => `
+      SELECT 
+        PersonID, Name, City, State, ZipCode, ProfessionalSummary, 
+        Office, ProfessionType, Skill, OnAssignment, Status, HireDate, RunTime,
+        GeoLocation.STDistance(geography::Point(${center.lat}, ${center.lng}, 4326)) / 1609.344 as distance_miles,
+        '${center.zipCode}' as nearest_center
+      FROM ${TABLE_NAME}
+      WHERE GeoLocation IS NOT NULL 
+        AND GeoLocation.STDistance(geography::Point(${center.lat}, ${center.lng}, 4326)) <= ${radiusMeters}
+        AND ${conditionsForWhere}
+    `
+      )
+      .join(' UNION ALL ');
+
+    // Wrap in CTE to deduplicate (keep only nearest distance per profile)
+    const dedupeQuery = `
+      WITH AllMatches AS (
+        ${centerQueries}
+      ),
+      RankedMatches AS (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY PersonID ORDER BY distance_miles ASC) as rn
+        FROM AllMatches
+      )
+      SELECT * FROM RankedMatches WHERE rn = 1
+    `;
+
+    console.log(
+      `Multi-center radius search: ${centers.length} centers, ${radiusMiles} miles`
+    );
+    centers.forEach((c) =>
+      console.log(`  - ${c.zipCode}: (${c.lat}, ${c.lng})`)
+    );
+
+    // Count total unique matches
+    const countResult = await pool.request().query(`
+      ${dedupeQuery.replace('SELECT *', 'SELECT COUNT(*) as total')}
+    `);
+    const total = countResult.recordset[0]?.total || 0;
+
+    if (total === 0) {
+      return { profiles: [], total: 0, page, limit, totalPages: 0 };
+    }
+
+    // Determine sort order
+    let sortColumn: string;
+    switch (sortBy) {
+      case 'name':
+        sortColumn = 'Name';
+        break;
+      case 'location':
+        sortColumn = 'City';
+        break;
+      case 'profession':
+        sortColumn = 'ProfessionType';
+        break;
+      case 'distance':
+        sortColumn = 'distance_miles';
+        break;
+      default:
+        sortColumn = 'Name';
+    }
+
+    const orderClause =
+      sortBy === 'distance'
+        ? `distance_miles ${sortDirection.toUpperCase()}`
+        : `distance_miles ASC, ${sortColumn} ${sortDirection.toUpperCase()}`;
+
+    // Get paginated results
+    const dataResult = await pool.request().query(`
+      ${dedupeQuery}
+      ORDER BY ${orderClause}
+      OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+    `);
+
+    const profiles = dataResult.recordset.map((row: Record<string, unknown>) =>
+      this.rowToProfile(row, row.distance_miles as number)
+    );
+
+    console.log(
+      `Multi-center search found ${total} unique profiles (showing ${profiles.length})`
+    );
+
+    return {
+      profiles,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
   async searchProfiles(
     params: ProfileSearchParams
   ): Promise<PaginatedProfiles> {
@@ -202,11 +480,11 @@ export class AzureSqlDatabase implements IDatabase {
       sortDirection = 'asc',
     } = params;
 
-    const offset = (page - 1) * limit;
     const activeCondition = this.getActiveCondition();
     const conditions: string[] = [activeCondition];
     const request = pool.request();
 
+    // Build keyword search conditions
     const keywordsToSearch =
       keywords && keywords.length > 0 ? keywords : query ? [query] : [];
 
@@ -221,6 +499,7 @@ export class AzureSqlDatabase implements IDatabase {
       conditions.push(`(${keywordConditions})`);
     }
 
+    // Build profession type conditions
     if (professionTypes && professionTypes.length > 0) {
       const professionConditions = professionTypes
         .map((prof, index) => {
@@ -232,11 +511,19 @@ export class AzureSqlDatabase implements IDatabase {
       conditions.push(`(${professionConditions})`);
     }
 
-    let radiusSearchAttempted = false;
-    let radiusSearchSucceeded = false;
+    // Handle office filter
+    if (office) {
+      request.input('office', sql.NVarChar(100), office);
+      conditions.push('Office = @office');
+    }
 
+    // ═══════════════════════════════════════════════════════════════
+    // RADIUS SEARCH - Uses Azure SQL GEOGRAPHY for fast spatial queries
+    // ═══════════════════════════════════════════════════════════════
     if (radius && radius > 0) {
-      radiusSearchAttempted = true;
+      const hasGeoSupport = await this.checkGeoLocationSupport();
+
+      // Collect center zip codes
       const centerZipCodes = Array.from(
         new Set([
           ...(zipCode ? [zipCode] : []),
@@ -244,179 +531,139 @@ export class AzureSqlDatabase implements IDatabase {
         ])
       );
 
+      // Geocode ALL zip codes to get center points
+      const centers: Array<{ lat: number; lng: number; zipCode: string }> = [];
+
       if (centerZipCodes.length > 0) {
-        try {
-          const allNearbyZipCodesArrays = await Promise.all(
-            centerZipCodes.map((centerZip) =>
-              getZipCodesWithinRadius(centerZip, radius)
-            )
-          );
-          const allNearbyZipCodes = Array.from(
-            new Set(allNearbyZipCodesArrays.flatMap((zips) => zips ?? []))
-          );
+        console.log(
+          `Geocoding ${centerZipCodes.length} zip code(s) for radius search...`
+        );
 
-          if (allNearbyZipCodes.length > 0) {
-            const zipPlaceholders = allNearbyZipCodes
-              .map((z, index) => {
-                const paramName = `radiusZip${index}`;
-                request.input(paramName, sql.NVarChar(10), z);
-                return `@${paramName}`;
-              })
-              .join(', ');
-            conditions.push(`ZipCode IN (${zipPlaceholders})`);
-            radiusSearchSucceeded = true;
+        // Geocode all zip codes in parallel for efficiency
+        const geocodePromises = centerZipCodes.map(async (zip) => {
+          const location = await getZipLocation(zip);
+          if (location) {
+            return { lat: location.lat, lng: location.lng, zipCode: zip };
           }
-        } catch (error) {
-          console.error('Error in radius search:', error);
-        }
+          console.warn(`Could not geocode zip code: ${zip}`);
+          return null;
+        });
 
-        if (!radiusSearchSucceeded) {
-          const preFilterRequest = pool.request();
-          const preFilterConditions: string[] = [activeCondition];
+        const results = await Promise.all(geocodePromises);
+        results.forEach((r) => {
+          if (r) centers.push(r);
+        });
 
-          if (professionTypes && professionTypes.length > 0) {
-            const profConditions = professionTypes
-              .map((prof, index) => {
-                preFilterRequest.input(
-                  `preProf${index}`,
-                  sql.NVarChar(100),
-                  prof
-                );
-                return `ProfessionType LIKE @preProf${index}`;
-              })
-              .join(' OR ');
-            preFilterConditions.push(`(${profConditions})`);
-          }
-
-          const preFilterResult = await preFilterRequest.query(
-            `SELECT PersonID as id, ZipCode as zip_code, City as city, State as state FROM ${TABLE_NAME} WHERE ${preFilterConditions.join(' AND ')}`
-          );
-
-          const filteredProfiles = preFilterResult.recordset.map(
-            (row: Record<string, unknown>) => ({
-              id: String(row.id),
-              zip_code: row.zip_code as string,
-              city: row.city as string,
-              state: row.state as string,
-            })
-          );
-
-          if (filteredProfiles.length > 0) {
-            const allRadiusFilteredIdsSet = new Set<string>();
-            for (const centerZip of centerZipCodes) {
-              const idsForCenter = await getProfilesWithinRadius(
-                centerZip,
-                radius,
-                filteredProfiles
-              );
-              idsForCenter.forEach((id) => allRadiusFilteredIdsSet.add(id));
-            }
-            const radiusFilteredIds = Array.from(allRadiusFilteredIdsSet);
-
-            if (radiusFilteredIds.length === 0) {
-              return { profiles: [], total: 0, page, limit, totalPages: 0 };
-            }
-
-            const idPlaceholders = radiusFilteredIds
-              .map((id, index) => {
-                request.input(`radiusId${index}`, sql.BigInt, parseInt(id, 10));
-                return `@radiusId${index}`;
-              })
-              .join(', ');
-            conditions.push(`PersonID IN (${idPlaceholders})`);
-            radiusSearchSucceeded = true;
-          } else {
-            return { profiles: [], total: 0, page, limit, totalPages: 0 };
-          }
-        }
+        console.log(
+          `Successfully geocoded ${centers.length}/${centerZipCodes.length} zip codes`
+        );
       } else if (city) {
-        const preFilterRequest = pool.request();
-        const preFilterConditions: string[] = [activeCondition];
-
-        if (state) {
-          preFilterRequest.input(
-            'preState',
-            sql.NVarChar(2),
-            state.toUpperCase()
-          );
-          preFilterConditions.push('State = @preState');
-        }
-
-        const preFilterResult = await preFilterRequest.query(
-          `SELECT PersonID as id, ZipCode as zip_code, City as city, State as state FROM ${TABLE_NAME} WHERE ${preFilterConditions.join(' AND ')}`
-        );
-
-        const filteredProfiles = preFilterResult.recordset.map(
-          (row: Record<string, unknown>) => ({
-            id: String(row.id),
-            zip_code: row.zip_code as string,
-            city: row.city as string,
-            state: row.state as string,
-          })
-        );
-
-        if (filteredProfiles.length > 0) {
-          const centerCoords = await getCityLocation(city, state);
-          const radiusFilteredIds = centerCoords
-            ? await getProfilesWithinRadius(
-                city,
-                radius,
-                filteredProfiles,
-                centerCoords
-              )
-            : filteredProfiles.map((p) => p.id);
-
-          if (radiusFilteredIds.length === 0) {
-            return { profiles: [], total: 0, page, limit, totalPages: 0 };
-          }
-
-          const idPlaceholders = radiusFilteredIds
-            .map((id, index) => {
-              request.input(`radiusId${index}`, sql.BigInt, parseInt(id, 10));
-              return `@radiusId${index}`;
-            })
-            .join(', ');
-          conditions.push(`PersonID IN (${idPlaceholders})`);
-          radiusSearchSucceeded = true;
-        } else {
-          return { profiles: [], total: 0, page, limit, totalPages: 0 };
+        // Fallback to city if no zip codes provided
+        const centerLocation = await getCityLocation(city, state);
+        if (centerLocation) {
+          centers.push({
+            lat: centerLocation.lat,
+            lng: centerLocation.lng,
+            zipCode: `${city}, ${state}`,
+          });
+          console.log(`Radius search: ${radius} miles from ${city}, ${state}`);
         }
       }
-    } else if (zipCodes && zipCodes.length > 0) {
-      const zipPlaceholders = zipCodes
-        .map((z, index) => {
-          request.input(`zip${index}`, sql.NVarChar(10), z);
-          return `@zip${index}`;
-        })
-        .join(', ');
-      conditions.push(`ZipCode IN (${zipPlaceholders})`);
-    } else if (zipCode) {
-      request.input('zipCode', sql.NVarChar(10), zipCode);
-      conditions.push('ZipCode = @zipCode');
-    }
 
-    const isRadiusSearch = radius && radius > 0;
-    if (!isRadiusSearch) {
+      // If we have center(s) and GeoLocation support, use spatial query
+      if (centers.length > 0 && hasGeoSupport) {
+        console.log(
+          `Using Azure SQL spatial query with ${centers.length} center point(s)`
+        );
+
+        // Build additional conditions (excluding active which is already handled)
+        const spatialConditions: string[] = [];
+
+        // Add keyword conditions for spatial search
+        if (keywordsToSearch.length > 0) {
+          const keywordConditions = keywordsToSearch
+            .map((kw) => {
+              return `(ProfessionalSummary LIKE '%${kw.trim().replace(/'/g, "''")}%' OR Name LIKE '%${kw.trim().replace(/'/g, "''")}%' OR City LIKE '%${kw.trim().replace(/'/g, "''")}%' OR Skill LIKE '%${kw.trim().replace(/'/g, "''")}%')`;
+            })
+            .join(' OR ');
+          spatialConditions.push(`(${keywordConditions})`);
+        }
+
+        // Add profession conditions for spatial search
+        if (professionTypes && professionTypes.length > 0) {
+          const professionConditions = professionTypes
+            .map((prof) => `ProfessionType LIKE '${prof.replace(/'/g, "''")}'`)
+            .join(' OR ');
+          spatialConditions.push(`(${professionConditions})`);
+        }
+
+        // Add office condition for spatial search
+        if (office) {
+          spatialConditions.push(`Office = '${office.replace(/'/g, "''")}'`);
+        }
+
+        // Use multi-center search if multiple zip codes, otherwise single center (optimized)
+        if (centers.length > 1) {
+          return this.multiCenterSpatialRadiusSearch(
+            centers,
+            radius,
+            spatialConditions,
+            page,
+            limit,
+            sortBy,
+            sortDirection
+          );
+        } else {
+          // Single center - use original optimized method
+          return this.spatialRadiusSearch(
+            centers[0].lat,
+            centers[0].lng,
+            radius,
+            spatialConditions,
+            page,
+            limit,
+            sortBy,
+            sortDirection
+          );
+        }
+      } else {
+        // Fallback: Filter by state if radius search not possible
+        console.log('GeoLocation not available, falling back to state filter');
+        if (state) {
+          request.input('fallbackState', sql.NVarChar(2), state.toUpperCase());
+          conditions.push('State = @fallbackState');
+        }
+      }
+    } else {
+      // Non-radius search: apply location filters directly
+      if (zipCodes && zipCodes.length > 0) {
+        const zipPlaceholders = zipCodes
+          .map((z, index) => {
+            request.input(`zip${index}`, sql.NVarChar(10), z);
+            return `@zip${index}`;
+          })
+          .join(', ');
+        conditions.push(`ZipCode IN (${zipPlaceholders})`);
+      } else if (zipCode) {
+        request.input('zipCode', sql.NVarChar(10), zipCode);
+        conditions.push('ZipCode = @zipCode');
+      }
+
       if (city) {
         request.input('city', sql.NVarChar(100), `%${city}%`);
         conditions.push('City LIKE @city');
       }
+
       if (state) {
         request.input('state', sql.NVarChar(2), state.toUpperCase());
         conditions.push('State = @state');
       }
     }
 
-    if (radiusSearchAttempted && !radiusSearchSucceeded && state) {
-      request.input('fallbackState', sql.NVarChar(2), state.toUpperCase());
-      conditions.push('State = @fallbackState');
-    }
-
-    if (office) {
-      request.input('office', sql.NVarChar(100), office);
-      conditions.push('Office = @office');
-    }
-
+    // ═══════════════════════════════════════════════════════════════
+    // Standard query (non-spatial)
+    // ═══════════════════════════════════════════════════════════════
+    const offset = (page - 1) * limit;
     const whereClause = conditions.join(' AND ');
 
     let sortColumn: string;
