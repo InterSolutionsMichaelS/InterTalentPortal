@@ -93,7 +93,6 @@ export async function getZipLocation(
   }
 
   // Fallback: approximate based on first 3 digits
-  // This is VERY rough and only for demo purposes
   const fallback = getApproximateZipLocation(zipCode);
   if (fallback) {
     console.log(
@@ -146,16 +145,18 @@ export async function getCityLocation(
 
         if (state) {
           // Try to find a result that matches the state
-          const stateMatch = data.find((result: any) => {
-            const address = result.address;
-            // Check if state matches (address.state could be full name or abbreviation)
-            return (
-              address &&
-              (address.state?.toUpperCase() === state.toUpperCase() ||
-                address.state?.substring(0, 2).toUpperCase() ===
-                  state.toUpperCase())
-            );
-          });
+          const stateMatch = data.find(
+            (result: { address?: { state?: string } }) => {
+              const address = result.address;
+              // Check if state matches (address.state could be full name or abbreviation)
+              return (
+                address &&
+                (address.state?.toUpperCase() === state.toUpperCase() ||
+                  address.state?.substring(0, 2).toUpperCase() ===
+                    state.toUpperCase())
+              );
+            }
+          );
 
           if (stateMatch) {
             bestMatch = stateMatch;

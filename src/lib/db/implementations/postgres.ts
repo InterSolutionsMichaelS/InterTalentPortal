@@ -109,7 +109,6 @@ export class PostgresDatabase implements IDatabase {
     const {
       query,
       keywords,
-      professionTypes,
       city,
       state,
       zipCode,
@@ -155,8 +154,7 @@ export class PostgresDatabase implements IDatabase {
       queryBuilder = queryBuilder.or(professionConditions);
     }
 
-    // IMPORTANT: Only apply city/state filters if NOT doing radius search
-    // Radius search handles location filtering via radiusFilteredIds
+    // Only apply city/state filters if NOT doing radius search
     const isRadiusSearch = params.radius && params.radius > 0;
 
     if (!isRadiusSearch) {
@@ -228,8 +226,7 @@ export class PostgresDatabase implements IDatabase {
           `Radius search with ${centerZipCodes.length} center zip code(s): ${centerZipCodes.join(', ')}`
         );
 
-        // If no state provided, try to get state from first zip code lookup
-        // This is crucial for reducing geocoding load
+        // Get state from first zip code for pre-filtering
         if (!stateFilter && centerZipCodes.length > 0) {
           try {
             const zipLocation = await getZipLocation(centerZipCodes[0]);
@@ -346,10 +343,9 @@ export class PostgresDatabase implements IDatabase {
             // Fall through to standard geocoding approach
           }
 
-          // FALLBACK: Standard geocoding approach (for city searches or if zip optimization failed)
+          // Fallback: Standard geocoding approach
           if (!radiusSearchSucceeded) {
-            // IMPORTANT: Get only profiles that match OTHER filters first to reduce geocoding load
-            // Build a query with all filters EXCEPT radius, BUT include state filter to limit scope
+            // Pre-filter profiles to reduce geocoding load
             let preFilterQuery = this.client
               .from('profiles')
               .select('id, zip_code, city, state')
@@ -400,8 +396,7 @@ export class PostgresDatabase implements IDatabase {
                 `City + State radius search - filtering by state: ${stateFilter}`
               );
             } else if (city && !stateFilter) {
-              // City-only search: Filter by city name to reduce geocoding
-              // This will find all cities with that name across all states
+              // City-only search: filter by city name
               preFilterQuery = preFilterQuery.ilike('city', `%${city}%`);
               console.log(
                 `City-only radius search - filtering by city name: ${city} (all states)`

@@ -1,11 +1,13 @@
 /**
  * API Route: Contact Form Submission
  * Handles "Request Associate" form submissions
- * Sends email to office location via Resend
+ * Sends email to office location via O365 SMTP Relay
  * POST /api/contact
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { sendContactEmail } from '@/lib/email/send-email';
+import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +16,7 @@ export async function POST(request: NextRequest) {
       profileId,
       profileName,
       location,
-      officeEmail,
+      officeEmail: providedEmail,
       name,
       email,
       phone,
@@ -29,43 +31,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For now, just log the contact request
-    // In production, integrate with email service (Resend, SendGrid, etc.)
-    console.log('Contact Request Received:', {
+    // Get office email from location_emails table (or use provided email as fallback)
+    let toEmail = providedEmail;
+    if (location) {
+      try {
+        const result = await db.getLocationEmail(location);
+        toEmail = result.email;
+      } catch {
+        console.warn('Could not fetch location email, using provided email');
+      }
+    }
+
+    // Log the contact request
+    console.log('Contact Request:', {
       profileId,
       profileName,
       location,
-      officeEmail,
+      toEmail,
       requester: { name, email, phone },
+    });
+
+    // Send email via O365 SMTP Relay
+    const emailResult = await sendContactEmail({
+      toEmail: toEmail || 'info@intersolutions.com',
+      profileName,
+      location: location || 'Not specified',
+      requesterName: name,
+      requesterEmail: email,
+      requesterPhone: phone,
       comment,
     });
 
-    // TODO: Integrate with email service
-    // Example with Resend:
-    /*
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: 'noreply@intersolutions.com',
-      to: officeEmail,
-      replyTo: email,
-      subject: `Request for Associate: ${profileName}`,
-      html: `
-        <h2>New Associate Request</h2>
-        <p><strong>Associate:</strong> ${profileName}</p>
-        <p><strong>Location:</strong> ${location}</p>
-        <hr />
-        <h3>Requester Information</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
-        <hr />
-        <h3>Message</h3>
-        <p>${comment}</p>
-      `,
-    });
-    */
+    if (!emailResult.success) {
+      console.warn('Email not sent:', emailResult.error);
+      // Still return success to user - email failure shouldn't block the request
+    }
 
-    // Simulate successful send
     return NextResponse.json({
       success: true,
       message: 'Contact request received successfully',

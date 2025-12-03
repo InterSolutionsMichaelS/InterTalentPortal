@@ -1,270 +1,84 @@
 # InterTalent Portal
 
-A public-facing talent showcase platform for InterSolutions, allowing clients to browse and request top-tier professional talent across multiple industries.
+A talent showcase platform for InterSolutions, enabling clients to browse and request professional talent across multiple industries.
 
-## 🎯 Project Overview
+## Features
 
-**Client:** InterSolutions  
-**Timeline:** 3 weeks (Nov 12 - Dec 2, 2025)  
-**Type:** MVP Production Application
+- **Advanced Search** - Filter by profession type, location, and radius
+- **Location-Based Routing** - Automatic email routing to regional offices
+- **Responsive Design** - Mobile-first, accessible interface
+- **Real-time Data** - Synchronized with HR systems
 
-### Features
-
-- 🔍 **Advanced Search** - Search by profession type, location, and keywords
-- 📊 **Real-time Data Sync** - Automated updates from CSV exports every 2 hours
-- 📧 **Request System** - Email routing to regional distribution lists
-- ♿ **Accessible** - WCAG 2.1 AA compliant
-- 📱 **Responsive** - Mobile-first design
-- 📈 **Analytics** - Google Analytics 4 tracking
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS 4
-- **Database:** PostgreSQL (Supabase) → Azure SQL Server (Production)
-- **Hosting:** Vercel → Azure App Service (Production)
-- **Email:** SendGrid
-- **Analytics:** Google Analytics 4
+- **Database:** Azure SQL Server
+- **Hosting:** Azure App Service
+- **Email:** Office 365 SMTP
 
-### Development Strategy
-
-**Weeks 1-2 (Development):** PostgreSQL/Supabase for rapid development  
-**Week 3 (Migration):** Azure SQL Server + Azure App Service for production  
-**Architecture:** Database abstraction layer enables seamless migration
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
-- Git
+- npm
 
 ### Installation
 
 ```bash
-# Install dependencies
 npm install
-
-# Copy environment variables
 cp .env.example .env.local
-# Then fill in your values in .env.local
-
-# Run development server
+# Configure environment variables
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the application.
-
 ### Environment Variables
 
-Required environment variables (see `.env.local`):
-
 ```bash
-# Database
-DATABASE_URL=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+# Database (Azure SQL)
+DATABASE_TYPE=azure-sql
+AZURE_SQL_SERVER=
+AZURE_SQL_DATABASE=
+AZURE_SQL_USER=
+AZURE_SQL_PASSWORD=
 
-# Email
-SENDGRID_API_KEY=
-SENDGRID_FROM_EMAIL=
-
-# Analytics
-NEXT_PUBLIC_GA_MEASUREMENT_ID=
-
-# CSV Data Source
-CSV_SOURCE_TYPE=azure_blob
-AZURE_STORAGE_CONNECTION_STRING=
+# Email (O365 SMTP)
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM=
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
-├── app/                 # Next.js App Router pages
-│   ├── api/            # API routes
-│   └── ...
-├── components/         # React components
-│   ├── ui/            # Reusable UI components
-│   └── layout/        # Layout components
-├── lib/               # Business logic
-│   ├── db/           # Database queries & schema
-│   ├── data/         # CSV parsing & validation
-│   ├── sync/         # Profile sync logic
-│   ├── cron/         # Automated sync service
-│   └── email/        # Email sending (coming soon)
-├── types/            # TypeScript type definitions
-└── utils/            # Helper functions (name parser, validator)
-
-data/                  # CSV files for sync
+├── app/              # Next.js App Router
+│   ├── api/          # API endpoints
+│   └── profiles/     # Profile pages
+├── components/       # React components
+├── lib/
+│   ├── db/           # Database layer
+│   └── email/        # Email service
+└── types/            # TypeScript definitions
 ```
 
-## �️ Database Setup
-
-### Initial Setup
-
-1. Create Supabase account and project
-2. Copy database URL and keys to `.env.local`
-3. Seed database with sample data:
+## Scripts
 
 ```bash
-# Import profiles from CSV
-npm run seed
+npm run dev           # Development server
+npm run build         # Production build
+npm run start         # Start production server
+npm run lint          # Run linter
 ```
 
-This will:
+## Deployment
 
-- Read CSV from `data/InterTalent-Top-Talent-11102025.csv`
-- Validate all profiles
-- Import to database in batches of 100
-- Log import statistics
-
-## �📝 Development Workflow
-
-### Branches
-
-- `main` - Production-ready code
-- `develop` - Active development branch
-- Feature branches as needed
-
-### Daily Development
-
-```bash
-# Make sure you're on develop branch
-git checkout develop
-
-# Pull latest changes
-git pull origin develop
-
-# Create feature branch (optional)
-git checkout -b feature/your-feature
-
-# Make changes, commit frequently
-git add .
-git commit -m "Description of changes"
-
-# Push at end of day
-git push origin develop
-```
-
-## 🧪 Testing
-
-```bash
-# Test database connection
-npm run test:db
-
-# Test database helper functions
-npm run test:helpers
-
-# Test CSV sync functionality
-npm run test:sync
-
-# Run manual sync
-npm run sync:now
-
-# Run linter
-npm run lint
-
-# Type check
-npx tsc --noEmit
-
-# Format code
-npx prettier --write .
-```
-
-## 🔄 Data Sync
-
-The application includes automated profile synchronization:
-
-```bash
-# Start automated sync service (every 2 hours)
-npm run cron:start
-
-# Start in testing mode (every 2 minutes)
-npm run cron:start testing
-
-# Run manual sync
-npm run sync:now
-
-# Test sync with existing CSV
-npm run test:sync
-```
-
-The sync service:
-
-- Monitors `data/` directory for latest CSV file
-- Compares CSV data with database profiles
-- Inserts new profiles
-- Updates changed profiles (profession, office, summary, zip)
-- Soft-deletes removed profiles (sets `is_active=false`)
-- Uses unique key: `firstName|lastInitial|city|state`
-
-## 📦 Build & Deploy
-
-```bash
-# Build for production
-npm run build
-
-# Start production server (local)
-npm run start
-```
-
-**Deployment:** Automatic via Vercel on push to `main` branch.
-
-## 📚 Additional Documentation
-
-### Strategy & Planning
-
-- [Updated Development Strategy](./UPDATED_DEVELOPMENT_STRATEGY.md) ⭐ **NEW - Read First**
-- [Remaining Work Guide](./REMAINING_WORK_GUIDE.md) - Quick reference for daily tasks
-- [Client Requirements Analysis](./CLIENT_REQUIREMENTS_ANALYSIS.md) - Requirements validation
-- [Workflow Comparison](./WORKFLOW_COMPARISON.md) - Expected vs actual workflows
-
-### Historical Documentation
-
-- [Technical Architecture](../project-Talent_Showcase_Tool/02-technical-design/ARCHITECTURE.md)
-- [Development Plan](../project-Talent_Showcase_Tool/00-planning/MASTER_PLAN.md)
-- [Daily Checklists](../project-Talent_Showcase_Tool/00-planning/daily-checklists/)
-- [Day 4 Summary](./DAY_4_COMPLETION_SUMMARY.md) - Sync system completion
-
-## 🔄 Database Abstraction Strategy
-
-This project uses a **database abstraction layer** to enable seamless migration from PostgreSQL (development) to Azure SQL Server (production).
-
-**Key Benefits:**
-
-- ✅ Develop fast with PostgreSQL (Weeks 1-2)
-- ✅ Single configuration change to switch databases
-- ✅ 90%+ code reusability
-- ✅ Easy Azure SQL migration (Week 3)
-
-**Implementation:**
-
-```typescript
-// All database operations through clean interface
-import { db } from '@/lib/db';
-
-// Works with both PostgreSQL and Azure SQL
-const profiles = await db.getAllProfiles();
-const profile = await db.getProfileById(id);
-```
-
-See [UPDATED_DEVELOPMENT_STRATEGY.md](./UPDATED_DEVELOPMENT_STRATEGY.md) for complete details.
-
-## 🤝 Contributing
-
-This is a client project. All development follows the 21-day implementation plan.
-
-## 📄 License
-
-Proprietary - InterSolutions Client Project
+The application is deployed to Azure App Service with Node.js 20 LTS runtime.
 
 ---
 
-**Last Updated:** November 15, 2025  
-**Developer:** Ray Parker  
-**Status:** In Development (Day 5 - Database Abstraction + API Routes)  
-**Strategy:** PostgreSQL (Dev) → Azure SQL (Production Week 3)
+© InterSolutions

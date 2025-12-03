@@ -30,7 +30,6 @@ export async function hasGeoLocationData(tableName: string): Promise<boolean> {
 
 /**
  * Get all unique zip codes within a radius using Azure SQL spatial query
- * This is the OPTIMIZED approach - uses spatial index for O(log n) performance
  *
  * @param centerZip - Center zip code
  * @param radiusMiles - Radius in miles
@@ -198,8 +197,6 @@ export async function spatialProfileSearch(
       return null;
     }
 
-    // Get coordinates for first center (for now, use first one)
-    // TODO: Support multiple centers with UNION or distance to nearest
     const centerLocation = await getZipLocation(allCenterZips[0]);
     if (!centerLocation) {
       console.warn(`Could not geocode center zip: ${allCenterZips[0]}`);

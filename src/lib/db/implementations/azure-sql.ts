@@ -1,10 +1,6 @@
 /**
  * Azure SQL Database Implementation
- * Uses native GEOGRAPHY column for fast spatial queries
- *
- * REFACTORED: Now uses direct spatial queries instead of zip list approach
- * - 332ms spatial query vs 20 minutes per-profile geocoding
- * - Returns distance information for radius searches
+ * Uses native GEOGRAPHY column for optimized spatial queries
  */
 
 import sql from 'mssql';
@@ -854,7 +850,7 @@ export class AzureSqlDatabase implements IDatabase {
   async getLocationEmail(
     location: string
   ): Promise<{ email: string; isDefault: boolean }> {
-    const pool = await this.getPool();
+    const pool = await this.getConnection();
     const normalizedLocation = location.trim();
 
     try {
