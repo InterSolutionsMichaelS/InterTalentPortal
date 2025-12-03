@@ -15,6 +15,29 @@ interface ContactModalProps {
   profile: Profile;
 }
 
+// Format phone number to (XXX) XXX-XXXX format
+const formatPhoneNumber = (value: string): string => {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '');
+
+  // Limit to 10 digits
+  const limitedDigits = digits.slice(0, 10);
+
+  // Format based on number of digits
+  if (limitedDigits.length === 0) return '';
+  if (limitedDigits.length <= 3) return `(${limitedDigits}`;
+  if (limitedDigits.length <= 6)
+    return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
+  return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3, 6)}-${limitedDigits.slice(6)}`;
+};
+
+// Validate phone number - must be exactly 10 digits when provided
+const isValidPhoneNumber = (phone: string): boolean => {
+  if (!phone) return true; // Phone is optional
+  const digits = phone.replace(/\D/g, '');
+  return digits.length === 10;
+};
+
 export default function ContactModal({
   isOpen,
   onClose,
@@ -31,6 +54,7 @@ export default function ContactModal({
     'idle' | 'success' | 'error'
   >('idle');
   const [officeEmail, setOfficeEmail] = useState<string>('');
+  const [phoneError, setPhoneError] = useState<string>('');
 
   const fullName = `${profile.first_name} ${profile.last_initial}.`;
 
@@ -56,6 +80,13 @@ export default function ContactModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate phone number before submission
+    if (formData.phone && !isValidPhoneNumber(formData.phone)) {
+      setPhoneError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus('idle');
 
@@ -90,6 +121,7 @@ export default function ContactModal({
   const resetForm = () => {
     setFormData({ name: '', email: '', phone: '', comment: '' });
     setSubmitStatus('idle');
+    setPhoneError('');
   };
 
   const handleClose = () => {
@@ -200,13 +232,27 @@ export default function ContactModal({
                 type="tel"
                 id="phone"
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all"
+                onChange={(e) => {
+                  const formattedPhone = formatPhoneNumber(e.target.value);
+                  setFormData({ ...formData, phone: formattedPhone });
+                  // Clear error when user starts typing again
+                  if (phoneError) setPhoneError('');
+                }}
+                onBlur={() => {
+                  // Validate on blur
+                  if (formData.phone && !isValidPhoneNumber(formData.phone)) {
+                    setPhoneError('Please enter a valid 10-digit phone number');
+                  }
+                }}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all ${
+                  phoneError ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="(555) 123-4567"
                 disabled={isSubmitting}
               />
+              {phoneError && (
+                <p className="mt-1 text-sm text-red-500">{phoneError}</p>
+              )}
             </div>
 
             {/* Comment Field */}
