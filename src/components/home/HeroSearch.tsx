@@ -264,10 +264,11 @@ export default function HeroSearch() {
               )}
             </div>
 
-            {/* Search Button */}
+            {/* Search Button */} 
+            {/* Changed Search Button from red to company brand blue */}
             <button
               type="submit"
-              className="bg-[#ef4444] hover:bg-[#dc2626] text-white font-semibold px-6 md:px-8 py-3 rounded-full transition-colors text-sm md:text-base whitespace-nowrap shadow-lg md:shadow-none"
+              className="bg-[#06c] hover:bg-[#004080] text-white font-semibold px-6 md:px-8 py-3 rounded-full transition-colors text-sm md:text-base whitespace-nowrap shadow-lg md:shadow-none"
             >
               Search
             </button>
