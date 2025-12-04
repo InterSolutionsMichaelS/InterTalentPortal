@@ -11,13 +11,14 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex flex-col">
-            <span className="text-3xl font-bold leading-tight">
-              InterSolutions
-            </span>
-            <span className="text-[8px] font-medium tracking-wider leading-tight">
-              PROPERTY MANAGEMENT STAFFING SPECIALISTS
-            </span>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/InterSolutions_Trademark_White-e1621271432206.webp"
+              alt="InterSolutions Logo"
+              width={180}     // adjust to fit your header
+              height={50}
+              priority
+            />
           </Link>
 
           {/* Desktop Navigation */}
