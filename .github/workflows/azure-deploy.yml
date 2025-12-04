@@ -48,11 +48,11 @@ jobs:
 
       - name: Create deployment package
         run: |
-          # Next.js standalone output for Azure
+          echo "Creating Azure deployment package..."
           mkdir -p deploy
-          cp -r .next/standalone/* deploy/
-          cp -r .next/static deploy/.next/static
+          cp -r .next deploy/.next
           cp -r public deploy/public
+          cp package.json deploy/package.json
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
