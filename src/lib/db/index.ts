@@ -16,9 +16,10 @@ function createDatabase(): IDatabase {
   const dbType = process.env.DATABASE_TYPE || 'postgres';
 
   if (dbType === 'postgres') {
-    // Current: PostgreSQL via Supabase
+    const { supabase, supabaseAdmin } = require('./supabase');
     return new PostgresDatabase(supabase, supabaseAdmin);
   }
+
 
   if (dbType === 'azure-sql') {
     // Production: Azure SQL Server
