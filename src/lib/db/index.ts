@@ -26,7 +26,7 @@ function createDatabase(): IDatabase {
     return new AzureSqlDatabase(); 
   } 
   
-  throw new Error(Unknown database type: ${dbType}); 
+  throw new Error('Unknown database type: ${dbType}'); 
 }
 
 /**
