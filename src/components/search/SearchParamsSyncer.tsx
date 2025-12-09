@@ -42,7 +42,7 @@ export default function SearchParamsSyncer() {
     const keywordsParam = searchParams.get('keywords') || '';
     const zipCodesParam = searchParams.get('zipCodes') || '';
     const radiusParam = searchParams.get('radius');
-    const radius = radiusParam ? parseInt(radiusParam) : 10;
+    const radius = radiusParam ? parseInt(radiusParam) : 25;
     const radiusEnabled = radiusParam !== null; // If radius in URL, it's enabled
     const professionsParam = searchParams.get('professions') || '';
     const professions = professionsParam
@@ -99,6 +99,26 @@ export default function SearchParamsSyncer() {
 
     if (locationStr) {
       setLocation(locationStr);
+    }
+
+    // Auto-scroll to results section if there are search filters
+    const hasSearchFilters =
+      keywordsParam ||
+      zipCodesParam ||
+      city ||
+      state ||
+      zip ||
+      professionsParam ||
+      radiusParam;
+
+    if (hasSearchFilters) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const resultsSection = document.getElementById('results-section');
+        if (resultsSection) {
+          resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     }
 
     hasInitialized.current = true;

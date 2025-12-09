@@ -151,7 +151,7 @@ export default function HeroSearch() {
 
           {/* Subtitle */}
           <p className="text-base md:text-lg text-gray-200">
-            Find the right Maintenance Professional to complete the job.
+            Find the right Professional to complete the job.
           </p>
         </div>
 
@@ -264,11 +264,10 @@ export default function HeroSearch() {
               )}
             </div>
 
-            {/* Search Button */} 
-            {/* Changed Search Button from red to company brand blue */}
+            {/* Search Button */}
             <button
               type="submit"
-              className="bg-[#06c] hover:bg-[#004080] text-white font-semibold px-6 md:px-8 py-3 rounded-full transition-colors text-sm md:text-base whitespace-nowrap shadow-lg md:shadow-none"
+              className="bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white font-semibold px-6 md:px-8 py-3 rounded-full transition-colors text-sm md:text-base whitespace-nowrap shadow-lg md:shadow-none"
             >
               Search
             </button>

@@ -146,7 +146,7 @@ export default async function Home({
       <BlueBanner />
 
       {/* Main Content */}
-      <section className="container mx-auto px-4 py-12">
+      <section id="results-section" className="container mx-auto px-4 py-12">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Filters Sidebar */}
           <aside className="lg:w-80 shrink-0">

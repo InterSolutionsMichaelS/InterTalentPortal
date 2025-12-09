@@ -131,7 +131,7 @@ const initialState: SearchFilters = {
   zipCode: '',
   keywords: [],
   zipCodes: [],
-  radius: 10,
+  radius: 25,
   radiusEnabled: false, // Disabled by default for exact match
   selectedProfessions: [],
   professionsList: [],
@@ -232,8 +232,12 @@ export const useSearchStore = create<SearchStore>()(
         try {
           const res = await fetch('/api/professions');
           const data = await res.json();
+          // Filter out "Internal" profession type from the list
+          const filteredProfessions = (data.data || []).filter(
+            (prof: string) => prof.toLowerCase() !== 'internal'
+          );
           set({
-            professionsList: data.data || [],
+            professionsList: filteredProfessions,
             professionsLoading: false,
           });
         } catch (error) {

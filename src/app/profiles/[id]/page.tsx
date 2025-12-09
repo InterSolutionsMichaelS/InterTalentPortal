@@ -132,7 +132,7 @@ export default async function ProfilePage({
                 {profile.first_name}.
               </p>
 
-              <button className="w-full bg-[#ef4444] hover:bg-[#dc2626] text-white font-semibold py-3 rounded-lg transition-colors mb-3">
+              <button className="w-full bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white font-semibold py-3 rounded-lg transition-colors mb-3">
                 Request Information
               </button>
 
