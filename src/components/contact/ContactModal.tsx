@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Profile } from '@/lib/db/supabase';
+import type { Profile } from '@/lib/db';
 
 interface ContactModalProps {
   isOpen: boolean;

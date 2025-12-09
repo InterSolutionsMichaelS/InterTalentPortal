@@ -38,9 +38,7 @@ jobs:
         env:
           # Build-time environment variables
           NODE_ENV: production
-          DATABASE_TYPE: azure-sql
-          # These are needed at build time to avoid "Missing Supabase environment variables" error
-          # The actual values are set in Azure App Service configuration
+          # Azure SQL connection secrets are set in Azure App Service configuration
           AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
           AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
           AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}

@@ -11,8 +11,8 @@ import type {
   PaginatedProfiles,
   StateInfo,
   OfficeInfo,
+  Profile,
 } from '../interface';
-import type { Profile } from '../supabase';
 import { getZipLocation, getCityLocation } from '../../geospatial';
 
 // Table names configurable via environment variables

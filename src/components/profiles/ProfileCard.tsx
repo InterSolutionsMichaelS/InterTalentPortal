@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Profile } from '@/lib/db/supabase';
+import type { Profile } from '@/lib/db';
 import { useSearchStore } from '@/store/searchStore';
 import ContactModal from '@/components/contact/ContactModal';
 import { highlightKeywords } from '@/utils/highlightText';

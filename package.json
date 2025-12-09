@@ -28,7 +28,6 @@
     "cron:start": "npx dotenv-cli -e .env.local -- npx tsx src/lib/cron/start-cron.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.81.1",
     "csv-parse": "^6.1.0",
     "date-fns": "^4.1.0",
     "lodash": "^4.17.21",
