@@ -52,18 +52,15 @@ jobs:
           cp -r public deploy/public
           cp package.json deploy/package.json
 
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-
           
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: deploy
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
 
+          
       - name: Deployment Summary
         run: |
           echo "✅ Deployment complete!"
