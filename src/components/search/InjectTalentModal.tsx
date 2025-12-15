@@ -6,9 +6,10 @@ import RequestTalentModal from '@/components/modals/RequestTalentModal';
 
 interface InjectTalentModalProps {
   children: React.ReactNode;
+  location?: string;
 }
 
-export default function InjectTalentModal({ children }: InjectTalentModalProps) {
+export default function InjectTalentModal({ children, location, }: InjectTalentModalProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -26,7 +27,9 @@ export default function InjectTalentModal({ children }: InjectTalentModalProps) 
         </button>
       </div>
 
-      {open && <RequestTalentModal onClose={() => setOpen(false)} />}
+      {open && <RequestTalentModal 
+      location={location} 
+      onClose={() => setOpen(false)} />}
     </>
   );
 }

@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTalentRequestEmail } from "@/lib/email/send-email";
+import { db } from "@/lib/db";
 
-
-// Created on 12/12/25 by MS to use the request talent modal 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
-    const { name, email, phone, notes } = body || {};
+    const { name, email, phone, notes, location } = body || {};
 
     // Validate required fields
     if (!name || !email || !notes) {
@@ -17,20 +15,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Debug log
+    // Determine recipient email (branch-aware)
+    let toEmail = "info@intersolutions.com";
+
+    if (location) {
+      try {
+        const result = await db.getLocationEmail(location);
+        if (result?.email) {
+          toEmail = result.email;
+        }
+      } catch {
+        console.warn("Could not fetch location email, using info@ fallback");
+      }
+    }
+
     console.log("Incoming Talent Request:", {
       name,
       email,
       phone,
+      location,
+      toEmail,
       notes,
     });
 
-    // Send email using existing SMTP helper
     await sendTalentRequestEmail({
-      toEmail: "InterTalent@intersolutions.com",
+      toEmail,
       requesterName: name,
       requesterEmail: email,
-      requesterPhone: phone || null,
+      requesterPhone: phone || undefined,
       notes,
     });
 
@@ -40,7 +52,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Talent Request API Error:", error);
-
     return NextResponse.json(
       { error: "Failed to submit request" },
       { status: 500 }
