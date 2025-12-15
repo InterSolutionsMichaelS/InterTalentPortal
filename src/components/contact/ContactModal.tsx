@@ -208,7 +208,7 @@ export default function ContactModal({
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all"
+                className="w-full px-4 py-3 placeholder-gray-550 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all"
                 placeholder="John Smith"
                 disabled={isSubmitting}
               />
@@ -238,7 +238,7 @@ export default function ContactModal({
                     setEmailError('Please enter a valid email address');
                   }
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all ${
+                className={`w-full px-4 py-3 placeholder-gray-550 border rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all ${
                   emailError ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="john@example.com"
@@ -273,7 +273,7 @@ export default function ContactModal({
                     setPhoneError('Please enter a valid 10-digit phone number');
                   }
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all ${
+                className={`w-full px-4 py-3 placeholder-gray-550 border rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all ${
                   phoneError ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="(555) 123-4567"
@@ -300,7 +300,7 @@ export default function ContactModal({
                   setFormData({ ...formData, comment: e.target.value })
                 }
                 rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all resize-none"
+                className="w-full px-4 py-3 placeholder-gray-550 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1e3a5f] focus:border-[#1e3a5f] outline-none transition-all resize-none"
                 placeholder="Tell us about your needs..."
                 disabled={isSubmitting}
               />

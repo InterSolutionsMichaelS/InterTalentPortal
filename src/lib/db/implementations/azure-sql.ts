@@ -132,6 +132,13 @@ export class AzureSqlDatabase implements IDatabase {
     } else {
       createdAt = new Date().toISOString();
     }
+    const cleanSummary =
+      typeof row.ProfessionalSummary === 'string'
+        ? row.ProfessionalSummary
+            .replace(/^\s*"+/, '')   // remove leading quotes
+            .replace(/"+\s*$/, '')   // remove trailing quotes
+            .trim()
+        : '';
 
     const profile: Profile = {
       id: String(personId),
@@ -140,7 +147,7 @@ export class AzureSqlDatabase implements IDatabase {
       city: (row.City as string) || '',
       state: (row.State as string) || '',
       zip_code: zipCode,
-      professional_summary: (row.ProfessionalSummary as string) || '',
+      professional_summary: cleanSummary,
       office: (row.Office as string) || '',
       profession_type: (row.ProfessionType as string) || '',
       skills: row.Skill ? [row.Skill as string] : null,
@@ -161,9 +168,16 @@ export class AzureSqlDatabase implements IDatabase {
     return profile;
   }
 
+    // on page open shows only active available candidates with professional summaries 12/15/2025 MS 
   private getActiveCondition(): string {
-    return '1=1';
-  }
+  return `
+    ProfessionalSummary IS NOT NULL
+    AND LTRIM(RTRIM(ProfessionalSummary)) <> ''
+    AND Status = 'Active'
+    AND OnAssignment = 0
+  `;
+}
+
 
   async getAllProfiles(
     page: number = 1,
