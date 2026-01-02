@@ -38,6 +38,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# legacy / local-only ingestion pipeline
+intertalent-ingestion/
+
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

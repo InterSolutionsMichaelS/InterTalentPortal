@@ -108,8 +108,16 @@ export class AzureSqlDatabase implements IDatabase {
       row.OnAssignment === 'Yes' ||
       row.OnAssignment === 'yes';
 
-    const isActive =
-      row.Status === 'Active' || row.Status === 'active' || onAssignment;
+    // adjusted to show statuses other than Active explicitly 1/2/2026 MS
+    const ACTIVE_STATUSES = [
+      'Active',
+      'Idle',
+      'InProgress',
+      'Rehire',
+      'ReOnboard',
+    ];
+
+    const isActive = ACTIVE_STATUSES.includes(row.Status as string);
 
     // Handle both PersonID and PersonId (case variations between tables)
     const personId = row.PersonID || row.PersonId || row.personId || '';
@@ -168,16 +176,23 @@ export class AzureSqlDatabase implements IDatabase {
     return profile;
   }
 
-    // on page open shows only active available candidates with professional summaries 12/15/2025 MS 
+    // on page open shows active available candidates with professional summaries 12/15/2025 MS 
+    // edited from only active to active, idle, inactive, inProgress, Rehire, and Reonboard 1/2/2026 MS
   private getActiveCondition(): string {
-  return `
-    ProfessionalSummary IS NOT NULL
-    AND LTRIM(RTRIM(ProfessionalSummary)) <> ''
-    AND Status = 'Active'
-    AND OnAssignment = 0
-  `;
-}
-
+    return `
+      ProfessionalSummary IS NOT NULL
+      AND LTRIM(RTRIM(ProfessionalSummary)) <> ''
+      AND Status IN (
+        'Active',
+        'Idle',
+        'Inactive',
+        'InProgress',
+        'Rehire',
+        'ReOnboard'
+      )
+      AND OnAssignment = 0
+    `;
+  }
 
   async getAllProfiles(
     page: number = 1,

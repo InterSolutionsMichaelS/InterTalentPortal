@@ -9,6 +9,11 @@ import LoadingManager from '@/components/ui/LoadingManager';
 import InjectTalentModal from '@/components/search/InjectTalentModal';
 import { db } from '@/lib/db';
 
+
+// 🔒 Force this page to always fetch fresh data Added 1/2/26 MStiles
+export const dynamic = 'force-dynamic';
+
+
 // Helper function to build search params string for API calls
 function buildSearchParams(params: {
   keywords?: string;
