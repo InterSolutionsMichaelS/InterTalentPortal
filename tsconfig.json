@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "intertalent-ingestion"] //added the ingestion function that is for zipcentroids now 1/2/2026 MS 
 }
