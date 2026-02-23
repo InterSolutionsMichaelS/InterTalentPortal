@@ -3,6 +3,11 @@
  * Modal form for requesting an associate - triggered by "Request Associate" button
  * Prefills with associate info, looks up office email, sends contact request
  */
+/**
+ * @deprecated
+ * Legacy ContactModal.
+ * Replaced by RequestTalentModal + /api/request-talent.
+ 
 
 'use client';
 
@@ -46,7 +51,7 @@ const isValidEmail = (email: string): boolean => {
   return emailRegex.test(email.trim());
 };
 
-export default function ContactModal({
+//export default function ContactModal({
   isOpen,
   onClose,
   profile,
@@ -152,7 +157,7 @@ export default function ContactModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        {/* Close Button */}
+        {/* Close Button */ /*}
         <button
           onClick={handleClose}
           disabled={isSubmitting}
@@ -174,9 +179,9 @@ export default function ContactModal({
           </svg>
         </button>
 
-        {/* Modal Content */}
+        {/* Modal Content */ /*}
         <div className="p-8">
-          {/* Header */}
+          {/* Header */ /*}
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Request Associate
@@ -190,9 +195,9 @@ export default function ContactModal({
             </p>
           </div>
 
-          {/* Form */}
+          {/* Form */ /*}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Name Field */}
+            {/* Name Field */ /*}
             <div>
               <label
                 htmlFor="name"
@@ -214,7 +219,7 @@ export default function ContactModal({
               />
             </div>
 
-            {/* Email Field */}
+            {/* Email Field */ /*}
             <div>
               <label
                 htmlFor="email"
@@ -249,7 +254,7 @@ export default function ContactModal({
               )}
             </div>
 
-            {/* Phone Field (Optional) */}
+            {/* Phone Field (Optional) */ /*}
             <div>
               <label
                 htmlFor="phone"
@@ -284,7 +289,7 @@ export default function ContactModal({
               )}
             </div>
 
-            {/* Comment Field */}
+            {/* Comment Field */ /*}
             <div>
               <label
                 htmlFor="comment"
@@ -306,7 +311,7 @@ export default function ContactModal({
               />
             </div>
 
-            {/* Status Messages */}
+            {/* Status Messages */ /*}
             {submitStatus === 'success' && (
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-800">
                 <svg
@@ -343,7 +348,7 @@ export default function ContactModal({
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Submit Button */ /*}
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
@@ -389,3 +394,5 @@ export default function ContactModal({
     </div>
   );
 }
+
+*/

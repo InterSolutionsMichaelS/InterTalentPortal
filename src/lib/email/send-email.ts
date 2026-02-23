@@ -24,10 +24,12 @@ interface ContactEmailParams {
   toEmail: string;
   profileName: string;
   location: string;
+  personId: string;
   requesterName: string;
   requesterEmail: string;
   requesterPhone?: string;
   comment: string;
+  campaign?: string;
 }
 
 /**
@@ -40,17 +42,28 @@ export async function sendContactEmail(
     toEmail,
     profileName,
     location,
+    personId,
     requesterName,
     requesterEmail,
     requesterPhone,
     comment,
+    campaign,
   } = params;
+
 
   // Check if SMTP is configured
   if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     console.warn('SMTP not configured - email not sent');
     return { success: false, error: 'SMTP not configured' };
   }
+  
+   // ✅ Campaign-aware subject
+  const campaignLabel =
+    campaign === 'TalentTuesday'
+      ? 'Talent Tuesday'
+      : 'InterTalent Portal';
+
+  const subject = `${campaignLabel} – Associate Request: ${profileName} - ${location}`;  
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -59,6 +72,22 @@ export async function sendContactEmail(
       <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
         <p><strong>Associate:</strong> ${profileName}</p>
         <p><strong>Location:</strong> ${location}</p>
+        ${
+  personId
+    ? `
+      <p><strong>Employee ID:</strong> ${personId}</p>
+      <p>
+        <a
+          href="https://intersolutions.zenople.com/employee/directory/${personId}/employee/snapshot"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View Employee Profile
+        </a>
+      </p>
+    `
+    : ''
+}
       </div>
       
       <h3 style="color: #333;">Requester Information</h3>
@@ -94,7 +123,7 @@ export async function sendContactEmail(
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: toEmail,
       replyTo: requesterEmail,
-      subject: `Associate Request: ${profileName} - ${location}`,
+      subject,
       html,
     });
 

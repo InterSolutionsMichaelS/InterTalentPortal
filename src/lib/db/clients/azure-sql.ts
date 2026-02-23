@@ -6,10 +6,10 @@
 import sql from 'mssql';
 
 const config: sql.config = {
-  server: process.env.AZURE_SQL_SERVER || 'ipsql2025.database.windows.net',
-  database: process.env.AZURE_SQL_DATABASE || 'intertalent_DB',
-  user: process.env.AZURE_SQL_USER,
-  password: process.env.AZURE_SQL_PASSWORD,
+  server: process.env.INTERTALENT_SQL_SERVER || 'ipsql2025.database.windows.net',
+  database: process.env.INTERTALENT_SQL_DATABASE || 'intertalent_DB',
+  user: process.env.INTERTALENT_SQL_USER,
+  password: process.env.INTERTALENT_SQL_PASSWORD,
   options: {
     encrypt: true, // Required for Azure
     enableArithAbort: true,

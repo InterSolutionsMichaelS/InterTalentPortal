@@ -1,7 +1,7 @@
 'use client';
 
 //Created for the Request Talent Modal on 12/12/25 by MS 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import RequestTalentModal from '@/components/modals/RequestTalentModal';
 
 interface InjectTalentModalProps {
@@ -9,8 +9,21 @@ interface InjectTalentModalProps {
   location?: string;
 }
 
+
 export default function InjectTalentModal({ children, location, }: InjectTalentModalProps) {
   const [open, setOpen] = useState(false);
+  const [associateId, setAssociateId] = useState<string | undefined>(location);
+  
+  // 🔑 Deep-link support from email
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const idFromUrl = params.get('associateId');
+
+    if (idFromUrl) {
+      setAssociateId(idFromUrl);
+      setOpen(true);
+    }
+  }, []);
 
   return (
     <>
