@@ -1,22 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+
+
 
 interface RequestTalentModalProps {
   onClose: () => void;
   location?: string;
+
+  associateId?: string;
+  associateName?: string;
+  campaign?: 'TalentTuesday' | 'Generic';
+
+  requestMode?: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE';
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  personId?: string;
 }
 
+//added logic for contact name email and phone to be pulled through. 1/27/26 MS
 export default function RequestTalentModal({
   onClose,
   location,
+  associateId,
+  associateName,
+  personId,
+  campaign,
+  requestMode,
+  contactName,
+  contactEmail,
+  contactPhone
 }: RequestTalentModalProps) {
+  // 🔑 Single source of truth for behavior
+  const mode: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE' =
+    requestMode ?? (associateId ? 'ASSOCIATE' : 'GENERIC');
+
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     notes: '',
   });
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      name: contactName ?? prev.name,
+      email: contactEmail ?? prev.email,
+      phone: contactPhone ?? prev.phone,
+      notes:
+  mode === 'ASSOCIATE' && associateName
+    ? `Requesting associate: ${associateName}\n\n`
+    : '',
+    }));
+}, [contactName, contactEmail, contactPhone, associateName, mode]);
+
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -32,7 +73,16 @@ export default function RequestTalentModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          location, // optional, backend defaults to info@
+
+          // context
+          requestMode: mode,
+          campaign: campaign ?? 'Generic',
+
+          associateId: associateId ?? null,
+          associateName: associateName ?? null,
+          personId: personId ?? null,
+
+          location,
         }),
       });
 
@@ -61,17 +111,35 @@ export default function RequestTalentModal({
         </button>
 
         <h2 className="text-xl font-bold text-gray-900 mb-4">
-          Request Talent
+          {mode === 'ASSOCIATE' ? 'Request Associate' : 'Request Talent'}
         </h2>
 
         <p className="text-gray-600 mb-6">
-          At the moment, all available talent is engaged with other properties.
-          Please share your staffing needs and an InterSolutions representative
-          will follow up shortly.
+          {mode === 'ASSOCIATE' && associateName && (
+            <>
+              You’re requesting <strong>{associateName}</strong>. Please confirm
+              your details and we’ll route this request to the appropriate
+              representative.
+            </>
+          )}
+
+          {mode === 'UNAVAILABLE' && (
+            <>
+              No associates are currently available in your area. Please share
+              your staffing needs and an InterSolutions representative will
+              follow up shortly.
+            </>
+          )}
+
+          {mode === 'GENERIC' && (
+            <>
+              Please share your staffing needs and an InterSolutions
+              representative will follow up shortly.
+            </>
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
           <input
             type="text"
             placeholder="Your name"
@@ -83,7 +151,6 @@ export default function RequestTalentModal({
             className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
           />
 
-          {/* Email */}
           <input
             type="email"
             placeholder="Your email"
@@ -95,7 +162,6 @@ export default function RequestTalentModal({
             className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
           />
 
-          {/* Phone */}
           <input
             type="tel"
             placeholder="Phone number (optional)"
@@ -106,7 +172,12 @@ export default function RequestTalentModal({
             className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
           />
 
-          {/* Notes */}
+          {/* 🔒 Masked Employee ID (UI only) */}
+          {mode === 'ASSOCIATE' && associateName && personId && (
+            <p className="text-sm text-gray-500 mb-2">
+              Employee ID: ••••••
+            </p>
+          )}
           <textarea
             placeholder="Tell us what kind of talent you’re looking for"
             required
@@ -118,16 +189,14 @@ export default function RequestTalentModal({
             className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
           />
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={isSubmitting}
             className="w-full bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white py-2 rounded-md font-semibold transition disabled:opacity-50"
           >
-            {isSubmitting ? 'Sending…' : 'Request Talent'}
+            {isSubmitting ? 'Sending…' : 'Submit Request'}
           </button>
 
-          {/* Status messages */}
           {status === 'success' && (
             <p className="text-green-600 text-center text-sm">
               Request sent successfully. We’ll be in touch shortly.

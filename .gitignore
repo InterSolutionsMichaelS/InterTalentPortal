@@ -46,4 +46,7 @@ intertalent-ingestion/
 *.tsbuildinfo
 next-env.d.ts
 
-*.md
+*.md*.zip
+deploy/
+*.zip
+scripts/python/zip_coordinates_cache.json

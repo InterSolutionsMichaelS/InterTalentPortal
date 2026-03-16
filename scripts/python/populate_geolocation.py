@@ -12,7 +12,7 @@ Usage:
     python populate_geolocation.py
 
 Environment Variables (or edit the config below):
-    AZURE_SQL_SERVER=ipsql2025.database.windows.net
+    AZURE_SQL_SERVER=ipsql2025.database.windows.net  **CHANGED AZURE TO INTERTALENT**02/02/2026 MS
     AZURE_SQL_DATABASE=intertalent_DB
     AZURE_SQL_USER=your_username
     AZURE_SQL_PASSWORD=your_password
@@ -36,11 +36,11 @@ from pathlib import Path
 # CONFIGURATION - Update these values
 # ============================================
 CONFIG = {
-    'server': os.getenv('AZURE_SQL_SERVER', 'ipsql2025.database.windows.net'),
-    'database': os.getenv('AZURE_SQL_DATABASE', 'intertalent_DB'),
-    'username': os.getenv('AZURE_SQL_USER', 'YOUR_USERNAME_HERE'),
-    'password': os.getenv('AZURE_SQL_PASSWORD', 'YOUR_PASSWORD_HERE'),
-    'table_name': 'InterTalentShowcase',  # Change to your table name
+    'server': os.getenv('INTERTALENT_SQL_SERVER', 'ipsql2025.database.windows.net'),
+    'database': os.getenv('INTERTALENT_SQL_DATABASE', 'intertalent_DB'),
+    'username': os.getenv('INTERTALENT_SQL_USER', 'sqladmin'),
+    'password': os.getenv('INTERTALENT_SQL_PASSWORD'), #Password fallback locally removed MS 2/23/2026. 
+    'table_name': 'RayTestShowcase',  # Change to your table name
     'cache_file': 'zip_coordinates_cache.json',
     'api_delay': 0.1,  # Seconds between API calls (rate limiting)
 }
