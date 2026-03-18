@@ -131,8 +131,8 @@ const initialState: SearchFilters = {
   zipCode: '',
   keywords: [],
   zipCodes: [],
-  radius: 25,
-  radiusEnabled: false, // Disabled by default for exact match
+  radius: 15, // reduced from 25 to 15 per message from EMyket on 3/6/25 in Emily and Eddie Chat.
+  radiusEnabled: true, // Enabled by default to show more associates on search MS 3/6/25 Awaiting approval
   selectedProfessions: [],
   professionsList: [],
   professionsLoading: false,
@@ -173,6 +173,8 @@ export const useSearchStore = create<SearchStore>()(
             zipCode.trim() && !state.zipCodes.includes(zipCode.trim())
               ? [...state.zipCodes, zipCode.trim()]
               : state.zipCodes,
+            radiusEnabled: true, // added on 3/9/26 by MS to fix radius toggle on search
+            radius: 15, // added to set radius of 15 miles on search by zipcode
         })),
 
       removeZipCode: (zipCode) =>
@@ -359,6 +361,7 @@ export const useSearchStore = create<SearchStore>()(
         // Only persist bookmarks and radius preference
         bookmarkedIds: state.bookmarkedIds,
         radius: state.radius,
+        radiusEnabled: state.radiusEnabled, // added to keep toggle active on 3/6/25 by MS 
       }),
     }
   )

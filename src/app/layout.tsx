@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'InterSolutions - Talent Showcase',
-  description: 'Find the right Maintenance Professional for your organization',
+  description: 'Find the right Professional for your organization',
 };
 
 export default function RootLayout({

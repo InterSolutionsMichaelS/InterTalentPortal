@@ -5,6 +5,19 @@
 
 import nodemailer from 'nodemailer';
 
+
+function formatTimeTo12Hour(time?: string): string {
+  if (!time) return "Not specified";
+
+  const [hourStr, minute] = time.split(":");
+  let hour = parseInt(hourStr, 10);
+
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+
+  return `${hour}:${minute} ${ampm}`;
+}
+
 // O365 SMTP Relay Configuration
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.office365.com',
@@ -30,6 +43,9 @@ interface ContactEmailParams {
   requesterPhone?: string;
   comment: string;
   campaign?: string;
+  startDate?: string;   //added three optional fields to ensure json delivery of information 3/11/26 MS
+  startTime?: string;
+  endTime?: string;
 }
 
 /**
@@ -47,6 +63,9 @@ export async function sendContactEmail(
     requesterEmail,
     requesterPhone,
     comment,
+    startDate,    // added to call the correct 12 hour format times in email
+    startTime,
+    endTime,
     campaign,
   } = params;
 
@@ -56,7 +75,7 @@ export async function sendContactEmail(
     console.warn('SMTP not configured - email not sent');
     return { success: false, error: 'SMTP not configured' };
   }
-  
+   // lines 131-140 added to adjust json formatting of start time and end time in 12 hour format MS 3/11/26
    // ✅ Campaign-aware subject
   const campaignLabel =
     campaign === 'TalentTuesday'
@@ -109,6 +128,15 @@ export async function sendContactEmail(
       <h3 style="color: #333;">Message</h3>
       <div style="background: #f9f9f9; padding: 15px; border-left: 3px solid #0077B5; margin: 15px 0;">
         ${comment.replace(/\n/g, '<br>')}
+        
+        ${
+          startDate || startTime || endTime
+            ? `<br><br><strong>Requested Schedule:</strong><br>
+              Date: ${startDate || "Not specified"}<br>
+              Start: ${formatTimeTo12Hour(startTime)}<br>
+              End: ${formatTimeTo12Hour(endTime)}`
+            : ""
+        }
       </div>
       
       <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
@@ -165,6 +193,10 @@ interface TalentRequestEmailParams {
   requesterEmail: string;
   requesterPhone?: string;
   notes: string;
+
+  startDate?: string;    // added on 3/11/26 for json delivery of information
+  startTime?: string;
+  endTime?: string;
 }
 
 /**

@@ -39,7 +39,7 @@ CONFIG = {
     'server': os.getenv('INTERTALENT_SQL_SERVER', 'ipsql2025.database.windows.net'),
     'database': os.getenv('INTERTALENT_SQL_DATABASE', 'intertalent_DB'),
     'username': os.getenv('INTERTALENT_SQL_USER', 'sqladmin'),
-    'password': os.getenv('INTERTALENT_SQL_PASSWORD'), #Password fallback locally removed MS 2/23/2026. 
+    'password': os.getenv('INTERTALENT_SQL_PASSWORD', '*yGAOe^M4oLAkTiFvGaQ'), #Password fallback locally removed MS 2/23/2026. 
     'table_name': 'RayTestShowcase',  # Change to your table name
     'cache_file': 'zip_coordinates_cache.json',
     'api_delay': 0.1,  # Seconds between API calls (rate limiting)
