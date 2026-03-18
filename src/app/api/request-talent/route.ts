@@ -17,6 +17,10 @@ export async function POST(req: NextRequest) {
       location,
       personId,
 
+      startDate,
+      startTime,
+      endTime,
+
       requestMode,
       associateId,
       associateName,
@@ -63,6 +67,9 @@ export async function POST(req: NextRequest) {
       email,
       phone,
       location,
+      startDate,
+      startTime,
+      endTime,
       toEmail,
     });
 
@@ -86,6 +93,9 @@ export async function POST(req: NextRequest) {
           requesterPhone: phone,
           comment: notes,
           campaign,
+          startDate,
+          startTime,
+          endTime,
         });
 
         break;
@@ -99,6 +109,9 @@ export async function POST(req: NextRequest) {
           requesterEmail: email,
           requesterPhone: phone,
           notes: `NO ASSOCIATES AVAILABLE\nCampaign: ${campaign ?? "N/A"}\n\n${notes}`,
+          startDate,
+          startTime,
+          endTime,
         });
         break;
       }
@@ -112,6 +125,9 @@ export async function POST(req: NextRequest) {
           requesterEmail: email,
           requesterPhone: phone,
           notes,
+          startDate,
+          startTime,
+          endTime,
         });
         break;
       }

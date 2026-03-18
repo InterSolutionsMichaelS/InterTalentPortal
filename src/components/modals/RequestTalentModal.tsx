@@ -1,5 +1,7 @@
 'use client';
 
+
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 
@@ -37,12 +39,15 @@ export default function RequestTalentModal({
   const mode: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE' =
     requestMode ?? (associateId ? 'ASSOCIATE' : 'GENERIC');
 
-
+  // add startDate, startTime, endTime, for less unescessary contact for the order. 3/5/26 Approval relayed by AW. MS 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     notes: '',
+    startDate: '',
+    startTime: '',
+    endTime: '',
   });
 
   useEffect(() => {
@@ -57,7 +62,15 @@ export default function RequestTalentModal({
     : '',
     }));
 }, [contactName, contactEmail, contactPhone, associateName, mode]);
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
 
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
+  const router = useRouter();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -89,7 +102,9 @@ export default function RequestTalentModal({
       if (!res.ok) throw new Error('Request failed');
 
       setStatus('success');
-      setTimeout(() => onClose(), 1200);
+      setTimeout(() => {
+        window.location.href = 'https://intertalent.intersolutions.com';
+      }, 1200);
     } catch (err) {
       console.error(err);
       setStatus('error');
@@ -97,13 +112,17 @@ export default function RequestTalentModal({
       setIsSubmitting(false);
     }
   }
-
+  // added Start Time, End time and Start Date below on 3/5/26 Approved language as of 3/5 MS Approval through AW.
+  // line 118 was : <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4"> updated on 3/17/26 MS 
+  // line 119 was : <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-8 relative max-h-[90vh] overflow-y-auto"> udpated on 3/17/26 MS
   return (
-    <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 relative">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto"> 
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={() => {
+            window.location.href = 'https://intertalent.intersolutions.com';
+          }}
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
           aria-label="Close"
         >
@@ -171,7 +190,37 @@ export default function RequestTalentModal({
             }
             className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
           />
+          {/* Optional Scheduling Fields */}
 
+          <input
+            type="date"
+            placeholder="Start date"
+            value={formData.startDate}
+            onChange={(e) =>
+              setFormData({ ...formData, startDate: e.target.value })
+            }
+            className="w-full border rounded-md py-2 placeholder-gray-550 text-gray-900 appearance-none"
+          />
+
+          <input
+            type="time"
+            placeholder="Start time"
+            value={formData.startTime}
+            onChange={(e) =>
+              setFormData({ ...formData, startTime: e.target.value })
+            }
+            className="w-full border rounded-md  py-2 placeholder-gray-500 text-gray-900 appearance-none"
+          />
+
+          <input
+            type="time"
+            placeholder="End time"
+            value={formData.endTime}
+            onChange={(e) =>
+              setFormData({ ...formData, endTime: e.target.value })
+            }
+            className="w-full border rounded-md  py-2 placeholder-gray-500 text-gray-900 appearance-none"
+          />
           {/* 🔒 Masked Employee ID (UI only) */}
           {mode === 'ASSOCIATE' && associateName && personId && (
             <p className="text-sm text-gray-500 mb-2">
@@ -196,10 +245,29 @@ export default function RequestTalentModal({
           >
             {isSubmitting ? 'Sending…' : 'Submit Request'}
           </button>
-
+          {/***More robust Status Messages 3/12/26 */}
           {status === 'success' && (
             <p className="text-green-600 text-center text-sm">
-              Request sent successfully. We’ll be in touch shortly.
+              {mode === 'ASSOCIATE' && (
+                <>
+                  Thank you for requesting <strong>{associateName}</strong>.  
+                  Your request has been submitted and an InterSolutions representative will follow up shortly.
+                </>
+              )}
+
+              {mode === 'GENERIC' && (
+                <>
+                  Thank you for submitting your request.  
+                  Our Staffing team has been notified, and a representative will reach out shortly to assist.
+                </>
+              )}
+
+              {mode === 'UNAVAILABLE' && (
+                <>
+                  Thank you for submitting your request.  
+                  Our Staffing team has been notified, and a representative will reach out shortly to assist.
+                </>
+              )}
             </p>
           )}
 
