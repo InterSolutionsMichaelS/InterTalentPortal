@@ -38,11 +38,11 @@ jobs:
         env:
           # Build-time environment variables
           NODE_ENV: production
-          # Azure SQL connection secrets are set in Azure App Service configuration
-          AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
-          AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
-          AZURE_SQL_USER: ${{ secrets.AZURE_SQL_USER }}
-          AZURE_SQL_PASSWORD: ${{ secrets.AZURE_SQL_PASSWORD }}
+          # DB_* for Azure SQL (optional at build time; App Service should also define these)
+          DB_SERVER: ${{ secrets.DB_SERVER }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
 
       - name: Create deployment package
         run: |
