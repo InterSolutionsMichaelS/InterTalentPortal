@@ -364,6 +364,94 @@ Source files: `src/app/admin/properties/[clientId]/page.tsx`, `CreatePropertyMod
 
 ---
 
+## 15. Support contacts page patterns
+
+Source files: `src/app/admin/contacts/[clientId]/page.tsx`, `CreateContactModal.tsx`, `EditContactModal.tsx`, `DeleteContactModal.tsx`.
+
+### 15a. Contacts page layout
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Page wrapper (main)** | `p-6 md:p-8` | Contacts page |
+| **Chrome row (title + actions)** | `mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between` | Same |
+| **Back link** | `mb-3 inline-block text-sm text-gray-800 hover:underline`; label `← Branding & overview`; `href="/admin"` | Same |
+| **Page title (`h1`)** | `text-2xl font-bold tracking-tight text-gray-900 md:text-3xl`; text: leading `👥 Support Team` then ` · {clientName}` when client is known | Same |
+| **Header actions cluster** | `flex shrink-0 flex-wrap gap-2` | Same |
+| **Add Contact (primary)** | `inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-50`; label `+ Add Contact`; `disabled={loadingContacts}` | Same |
+| **List card** | `overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md` (`section`) | Same |
+| **Card header band** | Outer: `border-b border-gray-100 px-4 py-3`; inner: `flex items-center justify-between` | Same |
+| **Card header title** | `text-base font-semibold text-gray-900` — literal `Support contacts` | Same |
+| **Member count (right)** | `text-sm text-gray-500` — `{count} member` / `members` | Same |
+| **Load error body** | `p-8 text-center text-sm text-red-600` — “Could not load contacts. Please try again.” | Same |
+
+### 15b. Contact list row
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **List container** | `divide-y divide-gray-100` | Contacts page |
+| **Row** | `flex items-center justify-between gap-3 px-4 py-3` | Same |
+| **Left cluster** | `flex min-w-0 flex-1 items-start gap-3` | Same |
+| **Avatar (photo)** | Wrapper `h-10 w-10 shrink-0 overflow-hidden rounded-full bg-sky-100`; `<img>` `h-full w-full object-cover`; `src={profile_image}` | Same |
+| **Avatar (initials)** | `flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-900` (`aria-hidden`); **data:** `contactInitials(name)` — first two letters of single word, else first letter of first + last word (uppercase), empty name → `?` | Same |
+| **Text column** | `min-w-0 flex-1` | Same |
+| **Name** | `truncate text-sm font-semibold text-gray-900` | Same |
+| **Mobile / email row** | `mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600`; mobile span `truncate` — `📞 {mobile}` if non-empty; email span `truncate` — `✉️ {email}` if non-empty | Same |
+| **Action cluster** | `ml-2 flex shrink-0 gap-2 sm:ml-4` | Same |
+| **Edit** | `inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50`; label `✏️ Edit` | Same |
+| **Delete** | `inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50`; label `🗑 Delete` | Same |
+
+### 15c. Empty state pattern
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Container** | `flex flex-col items-center justify-center px-6 py-12 text-center` | Contacts page (no contacts) |
+| **Emoji** | `mb-3 text-4xl` — `👥` (`span`, `aria-hidden`) | Same |
+| **Title** | `mb-1 text-sm font-semibold text-gray-900` — “No support contacts yet” | Same |
+| **Subtitle** | `mb-4 text-xs text-gray-500` — “Add team members to display on the client portal sidebar card.” | Same |
+| **Single CTA** | `rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50`; label `+ Add Contact` | Same |
+
+### 15d. Loading skeleton pattern
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **List shell** | `divide-y divide-gray-100` | Contacts page |
+| **Skeleton row** | `flex animate-pulse items-center gap-3 px-4 py-3` (two placeholder keys) | Same |
+| **Avatar skeleton** | `h-10 w-10 shrink-0 rounded-full bg-gray-200` | Same |
+| **Text block** | `min-w-0 flex-1 space-y-2` | Same |
+| **Line bars** | Name line `h-4 w-40 max-w-full rounded bg-gray-200`; detail line `h-3 w-56 max-w-full rounded bg-gray-200` | Same |
+| **Action placeholders (sm+)** | Wrapper `ml-4 hidden shrink-0 gap-2 sm:flex`; bars `h-8 w-16` and `h-8 w-20` `rounded-md bg-gray-200` | Same |
+
+### 15e. Contact modals
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Overlay** | `fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4` | Create / Edit / Delete contact |
+| **Form modal panel** | `max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl` | `CreateContactModal`, `EditContactModal` |
+| **Delete modal panel** | `w-full max-w-md rounded-xl bg-white p-6 shadow-xl` | `DeleteContactModal` |
+| **Form modal title (`h2`, left)** | `mb-4 text-lg font-bold text-gray-900` | Create / Edit |
+| **Add title (emoji)** | `👤 Add Support Contact` | `CreateContactModal` |
+| **Edit title (emoji)** | `✏️ Edit Support Contact` | `EditContactModal` |
+| **Top validation alert** | `mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900` — “Please fix the errors below before continuing.” | Create / Edit |
+| **Form stack** | `flex flex-col gap-4` | Create / Edit |
+| **Labels** | `mb-1 block text-sm font-medium text-gray-700`; required asterisk `text-red-500` on “Full Name *” | Create / Edit |
+| **Text inputs** | Default border `border-gray-300`; error `border-red-500`; `rounded-md border px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400` | Create / Edit |
+| **Field error line** | `mt-1 text-xs text-red-600` | Create / Edit |
+| **General error** | `text-sm text-red-600` | Create / Edit |
+| **Profile file input** | `key={profileKey}` reset; `accept=".jpg,.jpeg,.png,.webp"`; `className` includes `w-full rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm`; error state `border-red-500` else `border-gray-300` | Create / Edit |
+| **Profile hint (create)** | `mt-1 text-xs text-gray-500` — “.jpg .png .webp — max 5 MB. If not uploaded, initials will be shown.” + optional `ml-2 text-gray-700` chosen filename | `CreateContactModal` |
+| **Profile hint (edit)** | `mt-1 text-xs text-gray-500` — “.jpg .png .webp — max 5 MB” + optional filename span | `EditContactModal` |
+| **Footer** | `<hr className="border-gray-200" />`; `flex justify-end gap-2`; Cancel outline `rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50`; primary `inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 transition-colors` + spinner `h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent` | Create / Edit |
+| **Create submit label** | `Save Contact` | `CreateContactModal` |
+| **Edit submit label** | `Save Changes` | `EditContactModal` |
+| **Edit — current photo block** | When `contact.profile_image`: row `mb-2 flex flex-wrap items-center gap-3`; thumb `flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-xs font-semibold text-sky-900` + `img` `h-full w-full object-cover`; badge `inline-block rounded-md bg-sky-100 px-2 py-1 text-xs font-medium text-sky-900` — `Current: {filename}` (last URL segment); hint `mt-1 text-xs text-gray-500` “Upload new to replace, or leave blank to keep”. When no image: same hint only `mb-2` | `EditContactModal` |
+| **Delete — icon well** | `mb-4 flex justify-center`; circle `flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-xl text-gray-600`; inner `🗑` | `DeleteContactModal` |
+| **Delete title** | `mb-2 text-center text-lg font-bold text-gray-900` — “Remove Support Contact?” | Same |
+| **Delete body** | `mb-4 text-center text-sm text-gray-600` — “Remove **{name}** from the {clientName} support team?” with name `font-semibold text-gray-900` | Same |
+| **Delete warning box** | `mb-4 border-l-4 border-orange-600 bg-orange-50 px-3 py-2 text-sm text-orange-900` — photo deletion copy | Same |
+| **Delete actions** | `hr` `mb-4 border-gray-200`; Cancel outline; confirm `inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors`; spinner `border-red-400 border-t-transparent`; label `Yes, Remove` | Same |
+
+---
+
 ## Appendix: Color swatch (branding details)
 
 | Element | Classes | Source |

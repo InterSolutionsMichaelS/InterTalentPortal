@@ -57,10 +57,34 @@ export interface DeletePropertyResponse {
 
 export interface Contact {
   id: number;
+  /** Present on single-contact and mutation responses */
+  client_id?: number;
   name: string;
   mobile: string;
   email: string;
   profile_image: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ContactListResponse {
+  success: true;
+  data: Contact[];
+}
+
+export interface ContactDetailResponse {
+  success: true;
+  data: Contact;
+}
+
+export interface ContactMutationResponse {
+  success: true;
+  data: Contact;
+}
+
+export interface DeleteContactResponse {
+  success: true;
+  message: string;
 }
 
 export interface ClientDetail extends Client {
