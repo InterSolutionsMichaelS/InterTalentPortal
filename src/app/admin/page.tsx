@@ -1,66 +1,20 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { ClientBrandingCard } from '@/components/admin/ClientBrandingCard';
 import { ClientSidebar } from '@/components/admin/ClientSidebar';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
-import { EditClientModal } from '@/components/admin/EditClientModal';
 import { ToastProvider } from '@/components/admin/ToastContext';
-import type {
-  ApiErrorResponse,
-  Client,
-  ClientDetail,
-  ClientDetailResponse,
-  ClientListResponse,
-} from '@/types/admin';
-
-function BrandingCardSkeleton() {
-  return (
-    <div className="animate-pulse p-6 md:p-8">
-      <div className="mb-6 flex justify-between">
-        <div className="h-9 w-48 max-w-full rounded bg-gray-200" />
-        <div className="flex gap-2">
-          <div className="h-10 w-20 rounded bg-gray-200" />
-          <div className="h-10 w-24 rounded bg-gray-200" />
-        </div>
-      </div>
-      <div className="rounded-lg border border-gray-200 p-4">
-        <div className="mb-4 flex justify-between">
-          <div className="h-6 w-32 rounded bg-gray-200" />
-          <div className="h-8 w-28 rounded bg-gray-200" />
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="flex gap-4">
-              <div className="h-4 w-24 shrink-0 rounded bg-gray-200" />
-              <div className="h-4 flex-1 rounded bg-gray-200" />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="mt-8 space-y-2">
-        <div className="h-12 w-full rounded-lg bg-gray-200" />
-        <div className="h-12 w-full rounded-lg bg-gray-200" />
-      </div>
-    </div>
-  );
-}
+import type { ApiErrorResponse, Client, ClientListResponse } from '@/types/admin';
 
 export default function AdminPage() {
+  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(
-    null
-  );
-  const [selectedClient, setSelectedClient] = useState<ClientDetail | null>(
-    null
-  );
   const [loadingList, setLoadingList] = useState(true);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
 
@@ -74,64 +28,6 @@ export default function AdminPage() {
     );
   }, [clients, searchQuery]);
 
-  useEffect(() => {
-    if (clients.length === 0) {
-      if (selectedClientId !== null) {
-        setSelectedClientId(null);
-      }
-      setSelectedClient(null);
-      return;
-    }
-
-    const inClients = clients.some((c) => c.id === selectedClientId);
-    if (!inClients) {
-      setSelectedClientId(clients[0].id);
-      return;
-    }
-
-    if (filteredClients.length === 0) {
-      return;
-    }
-
-    const inFiltered = filteredClients.some(
-      (c) => c.id === selectedClientId
-    );
-    if (!inFiltered) {
-      setSelectedClientId(filteredClients[0].id);
-    }
-  }, [clients, filteredClients, selectedClientId]);
-
-  useEffect(() => {
-    if (selectedClientId === null) {
-      setSelectedClient(null);
-      return;
-    }
-
-    let cancelled = false;
-    setLoadingDetail(true);
-
-    void (async () => {
-      try {
-        const res = await fetch(`/api/admin/clients/${selectedClientId}`);
-        const json = (await res.json()) as ClientDetailResponse | ApiErrorResponse;
-        if (cancelled) return;
-        if (json.success) {
-          setSelectedClient(json.data);
-        } else {
-          setSelectedClient(null);
-        }
-      } catch {
-        if (!cancelled) setSelectedClient(null);
-      } finally {
-        if (!cancelled) setLoadingDetail(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedClientId]);
-
   const fetchAllClients = useCallback(async () => {
     setLoadingList(true);
     try {
@@ -139,17 +35,11 @@ export default function AdminPage() {
       const json = (await res.json()) as ClientListResponse | ApiErrorResponse;
       if (!json.success) {
         setClients([]);
-        setSelectedClientId(null);
         return;
       }
       setClients(json.data);
-      if (json.data.length === 0) {
-        setSelectedClientId(null);
-        setSelectedClient(null);
-      }
     } catch {
       setClients([]);
-      setSelectedClientId(null);
     } finally {
       setLoadingList(false);
     }
@@ -161,6 +51,10 @@ export default function AdminPage() {
 
   const mainNoSearchMatches =
     searchQuery.trim().length > 0 && filteredClients.length === 0;
+
+  const handleSelectClient = (id: number) => {
+    router.push(`/admin/clients/${id}`);
+  };
 
   const openDeleteFor = (id: number) => {
     const c = clients.find((x) => x.id === id);
@@ -180,8 +74,8 @@ export default function AdminPage() {
               filteredClients={filteredClients}
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
-              selectedClientId={selectedClientId}
-              onSelectClient={setSelectedClientId}
+              selectedClientId={null}
+              onSelectClient={handleSelectClient}
               onNewClient={() => setShowCreateModal(true)}
               onRequestDelete={openDeleteFor}
               loading={loadingList}
@@ -189,7 +83,9 @@ export default function AdminPage() {
           }
         >
           {loadingList ? (
-            <BrandingCardSkeleton />
+            <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 md:p-8">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+            </div>
           ) : clients.length === 0 ? (
             <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
               <span className="mb-4 text-5xl" aria-hidden>
@@ -238,7 +134,7 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
-          ) : selectedClientId === null ? (
+          ) : (
             <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
               <span className="mb-4 text-5xl" aria-hidden>
                 🏢
@@ -247,28 +143,10 @@ export default function AdminPage() {
                 Select a client portal
               </h1>
               <p className="mb-6 max-w-md text-sm text-gray-600">
-                Choose a client from the left sidebar to view and manage
-                their branding, properties, and support team.
+                Choose a client from the left sidebar to view and manage their
+                branding, properties, and support team.
               </p>
-              <button
-                type="button"
-                onClick={() => setShowCreateModal(true)}
-                className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50"
-              >
-                + New Client
-              </button>
             </div>
-          ) : loadingDetail || !selectedClient ? (
-            <BrandingCardSkeleton />
-          ) : (
-            <ClientBrandingCard
-              client={selectedClient}
-              onEdit={() => setShowEditModal(true)}
-              onDelete={() => {
-                setDeleteTarget(selectedClient);
-                setShowDeleteModal(true);
-              }}
-            />
           )}
         </AdminLayout>
       </div>
@@ -280,28 +158,7 @@ export default function AdminPage() {
           setClients((prev) =>
             [...prev, newClient].sort((a, b) => a.id - b.id)
           );
-          setSelectedClientId(newClient.id);
-        }}
-      />
-
-      <EditClientModal
-        isOpen={showEditModal}
-        client={selectedClient}
-        onClose={() => setShowEditModal(false)}
-        onSuccess={(updated) => {
-          setClients((prev) =>
-            prev.map((c) => (c.id === updated.id ? updated : c))
-          );
-          setSelectedClient((d) =>
-            d && d.id === updated.id
-              ? {
-                  ...d,
-                  ...updated,
-                  properties: d.properties,
-                  contacts: d.contacts,
-                }
-              : d
-          );
+          router.push(`/admin/clients/${newClient.id}`);
         }}
       />
 

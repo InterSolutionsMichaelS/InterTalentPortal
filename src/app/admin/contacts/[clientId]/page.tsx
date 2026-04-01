@@ -137,7 +137,7 @@ export default function AdminContactsPage() {
     searchQuery.trim().length > 0 && filteredClients.length === 0;
 
   const handleSelectClient = (id: number) => {
-    router.push(`/admin/contacts/${id}`);
+    router.push(`/admin/clients/${id}`);
   };
 
   const openDeleteClient = (id: number) => {
@@ -225,7 +225,7 @@ export default function AdminContactsPage() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <Link
-              href="/admin"
+              href={`/admin/clients/${clientId}`}
               className="mb-3 inline-block text-sm text-gray-800 hover:underline"
             >
               ← Branding & overview
