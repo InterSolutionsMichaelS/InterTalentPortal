@@ -12,10 +12,10 @@ import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 import { DeletePropertyModal } from '@/components/admin/DeletePropertyModal';
 import { EditPropertyModal } from '@/components/admin/EditPropertyModal';
 import { ToastProvider } from '@/components/admin/ToastContext';
+import { useAdminClients } from '@/hooks/useAdminClients';
 import type {
   ApiErrorResponse,
   Client,
-  ClientListResponse,
   Property,
   PropertyListResponse,
 } from '@/types/admin';
@@ -27,9 +27,13 @@ export default function AdminPropertiesPage() {
   const clientId =
     typeof rawParam === 'string' ? Number.parseInt(rawParam, 10) : NaN;
 
-  const [clients, setClients] = useState<Client[]>([]);
+  const {
+    clients,
+    isLoading: loadingList,
+    addClient,
+    removeClient,
+  } = useAdminClients();
   const [properties, setProperties] = useState<Property[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateClientModal, setShowCreateClientModal] = useState(false);
@@ -64,23 +68,6 @@ export default function AdminPropertiesPage() {
     [clients, clientId, clientIdValid]
   );
 
-  const fetchClients = useCallback(async () => {
-    setLoadingList(true);
-    try {
-      const res = await fetch('/api/admin/clients');
-      const json = (await res.json()) as ClientListResponse | ApiErrorResponse;
-      if (!json.success) {
-        setClients([]);
-        return;
-      }
-      setClients(json.data);
-    } catch {
-      setClients([]);
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
-
   const fetchProperties = useCallback(async (cid: number) => {
     setLoadingProperties(true);
     setPropertiesError(null);
@@ -104,10 +91,6 @@ export default function AdminPropertiesPage() {
       setLoadingProperties(false);
     }
   }, []);
-
-  useEffect(() => {
-    void fetchClients();
-  }, [fetchClients]);
 
   useEffect(() => {
     if (!clientIdValid) {
@@ -379,9 +362,7 @@ export default function AdminPropertiesPage() {
         isOpen={showCreateClientModal}
         onClose={() => setShowCreateClientModal(false)}
         onSuccess={(newClient) => {
-          setClients((prev) =>
-            [...prev, newClient].sort((a, b) => a.id - b.id)
-          );
+          addClient(newClient);
           router.push(`/admin/properties/${newClient.id}`);
         }}
       />
@@ -438,17 +419,15 @@ export default function AdminPropertiesPage() {
         onSuccess={(deletedId) => {
           setShowDeleteClientModal(false);
           setDeleteClientTarget(null);
-          setClients((prev) => {
-            const next = prev.filter((c) => c.id !== deletedId);
-            if (deletedId === clientId) {
-              if (next.length > 0) {
-                router.push(`/admin/properties/${next[0].id}`);
-              } else {
-                router.push('/admin');
-              }
+          removeClient(deletedId);
+          const next = clients.filter((c) => c.id !== deletedId);
+          if (deletedId === clientId) {
+            if (next.length > 0) {
+              router.push(`/admin/properties/${next[0].id}`);
+            } else {
+              router.push('/admin');
             }
-            return next;
-          });
+          }
         }}
       />
     </ToastProvider>

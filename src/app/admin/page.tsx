@@ -1,18 +1,23 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ClientSidebar } from '@/components/admin/ClientSidebar';
 import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 import { ToastProvider } from '@/components/admin/ToastContext';
-import type { ApiErrorResponse, Client, ClientListResponse } from '@/types/admin';
+import { useAdminClients } from '@/hooks/useAdminClients';
+import type { Client } from '@/types/admin';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
+  const {
+    clients,
+    isLoading: loadingList,
+    addClient,
+    removeClient,
+  } = useAdminClients();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -27,27 +32,6 @@ export default function AdminPage() {
         c.slug.toLowerCase().includes(q)
     );
   }, [clients, searchQuery]);
-
-  const fetchAllClients = useCallback(async () => {
-    setLoadingList(true);
-    try {
-      const res = await fetch('/api/admin/clients');
-      const json = (await res.json()) as ClientListResponse | ApiErrorResponse;
-      if (!json.success) {
-        setClients([]);
-        return;
-      }
-      setClients(json.data);
-    } catch {
-      setClients([]);
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchAllClients();
-  }, [fetchAllClients]);
 
   const mainNoSearchMatches =
     searchQuery.trim().length > 0 && filteredClients.length === 0;
@@ -155,9 +139,7 @@ export default function AdminPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={(newClient) => {
-          setClients((prev) =>
-            [...prev, newClient].sort((a, b) => a.id - b.id)
-          );
+          addClient(newClient);
           router.push(`/admin/clients/${newClient.id}`);
         }}
       />
@@ -170,7 +152,7 @@ export default function AdminPage() {
           setDeleteTarget(null);
         }}
         onSuccess={(deletedId) => {
-          setClients((prev) => prev.filter((c) => c.id !== deletedId));
+          removeClient(deletedId);
           setShowDeleteModal(false);
           setDeleteTarget(null);
         }}

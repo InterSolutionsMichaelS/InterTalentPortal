@@ -10,12 +10,12 @@ import { CreateClientModal } from '@/components/admin/CreateClientModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 import { EditClientModal } from '@/components/admin/EditClientModal';
 import { ToastProvider } from '@/components/admin/ToastContext';
+import { useAdminClients } from '@/hooks/useAdminClients';
 import type {
   ApiErrorResponse,
   Client,
   ClientDetail,
   ClientDetailResponse,
-  ClientListResponse,
 } from '@/types/admin';
 
 function BrandingCardSkeleton() {
@@ -57,11 +57,16 @@ export default function AdminClientDetailPage() {
   const clientId =
     typeof rawParam === 'string' ? Number.parseInt(rawParam, 10) : NaN;
 
-  const [clients, setClients] = useState<Client[]>([]);
+  const {
+    clients,
+    isLoading: loadingList,
+    addClient,
+    updateClient,
+    removeClient,
+  } = useAdminClients();
   const [selectedClient, setSelectedClient] = useState<ClientDetail | null>(
     null
   );
-  const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<
     'NOT_FOUND' | 'LOAD_FAILED' | null
@@ -83,23 +88,6 @@ export default function AdminClientDetailPage() {
         c.slug.toLowerCase().includes(q)
     );
   }, [clients, searchQuery]);
-
-  const fetchAllClients = useCallback(async () => {
-    setLoadingList(true);
-    try {
-      const res = await fetch('/api/admin/clients');
-      const json = (await res.json()) as ClientListResponse | ApiErrorResponse;
-      if (!json.success) {
-        setClients([]);
-        return;
-      }
-      setClients(json.data);
-    } catch {
-      setClients([]);
-    } finally {
-      setLoadingList(false);
-    }
-  }, []);
 
   const fetchClientDetail = useCallback(async (id: number) => {
     setLoadingDetail(true);
@@ -124,10 +112,6 @@ export default function AdminClientDetailPage() {
       setLoadingDetail(false);
     }
   }, []);
-
-  useEffect(() => {
-    void fetchAllClients();
-  }, [fetchAllClients]);
 
   useEffect(() => {
     if (!clientIdValid) {
@@ -305,9 +289,7 @@ export default function AdminClientDetailPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSuccess={(newClient) => {
-          setClients((prev) =>
-            [...prev, newClient].sort((a, b) => a.id - b.id)
-          );
+          addClient(newClient);
           router.push(`/admin/clients/${newClient.id}`);
         }}
       />
@@ -317,9 +299,7 @@ export default function AdminClientDetailPage() {
         client={selectedClient}
         onClose={() => setShowEditModal(false)}
         onSuccess={(updated) => {
-          setClients((prev) =>
-            prev.map((c) => (c.id === updated.id ? updated : c))
-          );
+          updateClient(updated);
           if (clientIdValid && updated.id === clientId) {
             void fetchClientDetail(clientId);
           }
@@ -334,7 +314,7 @@ export default function AdminClientDetailPage() {
           setDeleteTarget(null);
         }}
         onSuccess={(deletedId) => {
-          setClients((prev) => prev.filter((c) => c.id !== deletedId));
+          removeClient(deletedId);
           setShowDeleteModal(false);
           setDeleteTarget(null);
           if (deletedId === clientId) {
