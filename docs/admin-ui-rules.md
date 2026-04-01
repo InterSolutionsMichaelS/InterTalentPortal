@@ -34,11 +34,11 @@ If something is listed as “not present,” no matching usage exists in those e
 
 | Concern | Classes / pattern | Source |
 |--------|-------------------|--------|
-| **Root flex shell** | `flex w-full min-h-screen` | `AdminLayout` |
-| **Sidebar width** | `w-[220px] shrink-0` | `AdminLayout` (`aside`) |
+| **Root flex shell** | `flex w-full h-screen overflow-hidden` | `AdminLayout` |
+| **Sidebar (`aside`)** | `w-[220px] shrink-0 h-full border-r border-neutral-200 bg-[#F9F8F3] shadow-[1px_0_0_0_#e5e7eb] overflow-hidden` | `AdminLayout` |
 | **Sidebar inner padding** | `px-3 py-4` | `ClientSidebar` root `div` |
-| **Sidebar column** | `flex h-full min-h-[calc(100vh-10rem)] flex-col` | `ClientSidebar` root |
-| **Main panel (right)** | `min-w-0 flex-1 bg-white` | `AdminLayout` (main content wrapper; no padding on this wrapper) |
+| **Sidebar column** | `flex h-full flex-col` | `ClientSidebar` root |
+| **Main panel (right)** | `min-w-0 flex-1 overflow-y-auto bg-white h-full` | `AdminLayout` (main content wrapper; no padding on this wrapper) |
 | **Main content padding (branding view)** | `p-6 md:p-8` | `ClientBrandingCard` outer wrapper |
 | **Admin portal min-width (desktop-only)** | The admin portal is a desktop-only tool. **Rule:** admin wrapper min-width **768px**. On viewports narrower than 768px, the page scrolls horizontally rather than compressing the layout. **Implementation:** add `min-w-[768px]` to the wrapper `div` in `src/app/admin/layout.tsx`. | Style guide rule (layout file) |
 

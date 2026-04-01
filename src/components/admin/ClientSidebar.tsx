@@ -56,7 +56,7 @@ export function ClientSidebar({
     total === 1 ? '1 CLIENT' : `${total} CLIENTS`;
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-10rem)] flex-col px-3 py-4">
+    <div className="flex h-full flex-col px-3 py-4">
       <header className="mb-4 border-b border-neutral-200 pb-4">
         <div className="mb-0.5 flex items-center gap-2">
           <div className="h-6 w-1 rounded-full bg-gray-800" />
