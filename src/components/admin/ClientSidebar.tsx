@@ -91,7 +91,7 @@ export function ClientSidebar({
           onChange={(e) => onSearchQueryChange(e.target.value)}
           disabled={loading || clients.length === 0}
           placeholder="Search by name or slug"
-          className={`w-full rounded-lg border py-2 pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70 ${
+          className={`w-full rounded-lg border py-2 pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70 [&::-webkit-search-cancel-button]:appearance-none ${
             noResults
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
               : 'border-gray-200 focus:border-gray-400 focus:ring-gray-400'

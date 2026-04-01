@@ -275,6 +275,95 @@ Source: `src/app/admin/page.tsx` — local component `BrandingCardSkeleton`.
 
 ---
 
+## 14. Properties page patterns
+
+Source files: `src/app/admin/properties/[clientId]/page.tsx`, `CreatePropertyModal.tsx`, `EditPropertyModal.tsx`, `DeletePropertyModal.tsx`, `BulkImportPropertiesModal.tsx`.
+
+### 14a. Properties page layout
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Page wrapper** | `p-6 md:p-8` | Properties page (main content) |
+| **Chrome row (title + actions)** | `mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between` | Same |
+| **Back link** | `mb-3 inline-block text-sm text-gray-800 hover:underline`; label `← Branding & overview`; `href="/admin"` | Same |
+| **Page title (`h1`)** | `text-2xl font-bold tracking-tight text-gray-900 md:text-3xl`; text: leading `📍 Properties` then ` · {clientName}` when client is known | Same |
+| **Header actions cluster** | `flex shrink-0 flex-wrap gap-2` | Same |
+| **Import CSV (outline)** | `rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50` | Same |
+| **Add property (primary)** | `inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors`; label `+ Add property` | Same |
+| **List card** | `overflow-hidden rounded-lg border border-gray-300 bg-white shadow-md` (`section`) | Same |
+| **Card header band** | Outer: `border-b border-gray-100 px-4 py-3`; inner: `flex items-center justify-between` | Same |
+| **Card header title** | `text-base font-semibold text-gray-900` — literal `All locations` | Same |
+| **Property count (right)** | `text-sm text-gray-500` — `{count} property` / `properties` | Same |
+| **Loading body** | `p-8 text-center text-sm text-gray-500` | Same |
+| **Load error body** | `p-8 text-center text-sm text-red-600` | Same |
+
+### 14b. Property list row
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **List container** | `divide-y divide-gray-100` | Properties page |
+| **Row** | `flex items-center justify-between px-4 py-3` | Same |
+| **Left column** | `min-w-0 flex-1` | Same |
+| **Name** | `truncate text-sm font-semibold text-gray-900` | Same |
+| **Address line** | `mt-0.5 truncate text-xs text-gray-500` when non-empty; **data:** comma-joined `[address, cityState, zip]` with `cityState = [city, state].filter(Boolean).join(' ')` (space between city and state) | Same |
+| **Action cluster** | `ml-4 flex shrink-0 gap-2` | Same |
+| **Edit** | `inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50`; label `✏️ Edit` | Same |
+| **Delete** | `inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50`; label `🗑 Delete` | Same |
+
+### 14c. Empty state pattern
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Container** | `flex flex-col items-center justify-center px-6 py-12 text-center` | Properties page (no properties) |
+| **Emoji** | `mb-3 text-4xl` — `📍` (`span`, `aria-hidden`) | Same |
+| **Title** | `mb-1 text-sm font-semibold text-gray-900` | Same |
+| **Subtitle** | `mb-4 text-xs text-gray-500` | Same |
+| **Button row** | `flex flex-wrap justify-center gap-2` | Same |
+| **Import (outline + emoji label)** | Same outline classes as header **Import CSV**; label `📤 Import CSV` | Same |
+| **Add Property (primary)** | Same primary classes as header **Add property**; label `+ Add Property` | Same |
+
+### 14d. Property modals
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Overlay** | `fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4` | Create / Edit / Delete / Bulk import |
+| **Form modal panel** | `max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl` | `CreatePropertyModal`, `EditPropertyModal`, `BulkImportPropertiesModal` |
+| **Delete modal panel** | `w-full max-w-md rounded-xl bg-white p-6 shadow-xl` | `DeletePropertyModal` |
+| **Form modal title (`h2`)** | `mb-4 text-lg font-bold text-gray-900` | Create / Edit / Bulk import |
+| **Add title (emoji prefix)** | `🏢 Add Property` | `CreatePropertyModal` |
+| **Edit title (emoji prefix)** | `✏️ Edit Property` | `EditPropertyModal` |
+| **Bulk import title (emoji prefix)** | `📤 Import Properties from CSV` | `BulkImportPropertiesModal` |
+| **Validation alert (form)** | `mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900` — “Please fix the errors below before continuing.” | Create / Edit |
+| **Delete icon well** | Wrapper `mb-4 flex justify-center`; circle `flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-xl text-gray-600`; inner `🗑` | `DeletePropertyModal` |
+| **Delete title** | `mb-2 text-center text-lg font-bold text-gray-900` — `Delete property?` (no emoji in string) | Same |
+| **Delete body** | `mb-4 text-center text-sm text-gray-600`; property name `font-semibold text-gray-900` | Same |
+| **Form fields / footer actions** | Match sections 6–8 of this guide: labels, inputs, `<hr className="border-gray-200" />`, Cancel outline, primary submit with spinner | Create / Edit |
+| **Create submit label** | `Save Property` | `CreatePropertyModal` |
+| **Edit submit label** | `Save Changes` | `EditPropertyModal` |
+| **Delete confirm** | `inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors`; spinner `h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent`; label `Yes, Delete` | `DeletePropertyModal` |
+
+### 14e. CSV import modal phases
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Hidden file input** | `hidden`; `accept=".csv,text/csv"`; `key` incremented to reset | `BulkImportPropertiesModal` |
+| **Template download row** | `mb-4 rounded-md bg-gray-100 px-3 py-2` (idle); inner `flex flex-wrap items-center justify-between gap-2 text-sm text-gray-700`; download control `font-medium text-sky-800 hover:underline` — `⬇ template.csv`. **Error (`result` error) phase:** same gray row classes but leading wrapper is `rounded-md bg-gray-100 px-3 py-2` inside error column (no `mb-4` on that duplicate in error block — first child is `rounded-md bg-gray-100 px-3 py-2`) | Same |
+| **Phase idle — upload zone shell** | `mb-3 rounded-lg border-2 p-6 text-center`; also `role="button"` `tabIndex={0}`; drag handlers on wrapper | Same |
+| **Idle, no file** | `cursor-pointer border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100` | Same |
+| **File selected, valid** | `border-sky-400 bg-sky-50` | Same |
+| **File selected, invalid** | `cursor-pointer border-red-500 bg-red-50` | Same |
+| **Idle empty — icon / copy** | `mb-2 block text-3xl` `📂`; `mb-1 text-sm font-bold text-gray-900` “Drop your CSV file here”; `text-sm text-gray-600` with inline `browse` `font-medium text-sky-800 hover:underline` | Same |
+| **Idle valid file** | `mb-2 text-2xl` `✅`; filename `text-sm font-bold text-sky-900`; meta `mt-1 text-xs text-gray-600` — KB + ` · ` + Remove `font-medium text-red-600 hover:underline` | Same |
+| **Idle invalid file** | `mb-2 text-2xl font-bold text-red-600` `✕`; filename `text-sm font-bold text-red-600`; Remove `mt-2 text-sm font-medium text-red-600 hover:underline` | Same |
+| **Client-side validation alert (below zone)** | `mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900` | Same |
+| **Column hint** | `mb-4 text-xs text-gray-500`; bold column name `font-medium text-gray-700` around `name` | Same |
+| **Idle footer** | `mt-4 flex justify-end gap-2`; Cancel outline; **Import** `inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-50`, disabled when there is no file or client-side validation string is non-null (`!file || fileInvalid !== null` in code) | Same |
+| **Phase uploading** | Column `flex flex-col items-center py-8 text-center`; emoji `mb-4 text-4xl` `⏳`; title `mb-4 text-sm font-bold text-gray-900` “Importing properties...”; **progress track** `mb-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-200`; **fill** `h-full rounded-full bg-gray-900 transition-[width] duration-300 ease-out` (`width` from state); caption `text-sm text-gray-600` “Processing...” | Same |
+| **Phase result — success** | Green bar: `border-l-4 border-green-600 bg-green-50 px-3 py-2 text-sm text-green-900`; check prefix `span` `font-semibold text-green-800` + `✓ `; optional skipped: `border-l-4 border-orange-600 bg-orange-50 px-3 py-2 text-sm text-orange-900`; body `text-sm text-gray-600`; `hr` `border-gray-200`; single **Done** `flex justify-end` + outline button | Same |
+| **Phase result — error** | Template row (see above); **status zone** `rounded-lg border-2 p-6 text-center` — valid file styling `border-2 border-sky-400 bg-sky-50`, invalid `border-red-500 bg-red-50` (same inner patterns as idle file states); **API error bar** `border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900`; **Error code** `text-xs text-gray-500` “Error code: …”; footer **Cancel** + **Try Again** (both outline, `flex justify-end gap-2`) | Same |
+
+---
+
 ## Appendix: Color swatch (branding details)
 
 | Element | Classes | Source |

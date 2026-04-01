@@ -17,6 +17,42 @@ export interface Property {
   city: string;
   state: string;
   zip: string;
+  /** Present on dedicated property API responses */
+  client_id?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PropertyListResponse {
+  success: true;
+  data: Property[];
+}
+
+export interface PropertyDetailResponse {
+  success: true;
+  data: Property;
+}
+
+export interface PropertyMutationResponse {
+  success: true;
+  data: Property;
+}
+
+export interface PropertyBulkSkippedRow {
+  row: number;
+  reason: string;
+}
+
+export interface PropertyBulkImportResponse {
+  success: true;
+  imported: number;
+  skipped: number;
+  skipped_rows: PropertyBulkSkippedRow[];
+}
+
+export interface DeletePropertyResponse {
+  success: true;
+  message: string;
 }
 
 export interface Contact {
