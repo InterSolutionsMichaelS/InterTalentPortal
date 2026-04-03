@@ -36,7 +36,7 @@ function sanitizeBaseSegment(fileNameWithoutExt: string): string {
 }
 
 /**
- * Saves an uploaded image to /public/uploads and returns the public URL path (e.g. /uploads/name-123.png).
+ * Saves an uploaded image to /public/uploads and returns the public URL path (e.g. /api/uploads/name-123.png).
  */
 export async function saveUploadedImage(file: File): Promise<string> {
   if (file.size > MAX_BYTES) {
@@ -63,23 +63,30 @@ export async function saveUploadedImage(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer());
   fs.writeFileSync(outPath, buffer);
 
-  return `/uploads/${finalName}`;
+  return `/api/uploads/${finalName}`;
 }
 
 /**
- * Best-effort delete of a file under /public from a stored public path like /uploads/file.png.
+ * Best-effort delete of a file under /public from a stored public path like /api/uploads/file.png or /uploads/file.png.
  * Does not throw; logs a warning if the file is missing or deletion fails.
  */
 export function safeUnlinkPublicUpload(publicPath: string | null | undefined): void {
   if (publicPath === null || publicPath === undefined) return;
   const trimmed = publicPath.trim();
   if (trimmed === '') return;
-  if (!trimmed.startsWith('/uploads/')) {
+  let relativeFromPublic: string;
+  if (trimmed.startsWith('/api/uploads/')) {
+    relativeFromPublic = path.join(
+      'uploads',
+      trimmed.slice('/api/uploads/'.length)
+    );
+  } else if (trimmed.startsWith('/uploads/')) {
+    relativeFromPublic = trimmed.replace(/^\//, '');
+  } else {
     console.warn('safeUnlinkPublicUpload: skipped non-upload path', trimmed);
     return;
   }
-  const relative = trimmed.replace(/^\//, '');
-  const fullPath = path.join(process.cwd(), 'public', relative);
+  const fullPath = path.join(process.cwd(), 'public', relativeFromPublic);
   try {
     fs.unlinkSync(fullPath);
   } catch (err) {
