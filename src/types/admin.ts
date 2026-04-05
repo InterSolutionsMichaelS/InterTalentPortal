@@ -116,3 +116,33 @@ export interface ApiErrorResponse {
   success: false;
   error: string;
 }
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminUserListResponse {
+  success: true;
+  data: AdminUser[];
+}
+
+export interface AdminUserDetailResponse {
+  success: true;
+  data: AdminUser;
+}
+
+export interface AdminUserMutationResponse {
+  success: true;
+  data: AdminUser;
+}
+
+export interface DeleteAdminUserResponse {
+  success: true;
+  message: string;
+}

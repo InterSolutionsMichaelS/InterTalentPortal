@@ -452,6 +452,90 @@ Source files: `src/app/admin/contacts/[clientId]/page.tsx`, `CreateContactModal.
 
 ---
 
+## 16. Authentication & user management patterns
+
+Source files: `src/app/admin/login/layout.tsx`, `src/app/admin/login/page.tsx`, `src/app/admin/users/page.tsx`, `CreateAdminUserModal.tsx`, `EditAdminUserModal.tsx`, `ChangePasswordModal.tsx`, `DeleteAdminUserModal.tsx`, `ClientSidebar.tsx` (logout block).
+
+### 16a. Login page layout
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Layout wrapper (full viewport background)** | `min-h-screen bg-gray-50` on root `div` wrapping `{children}` | `admin/login/layout.tsx` |
+| **Page background / centering shell** | `flex min-h-screen items-center justify-center px-4 py-10` | `admin/login/page.tsx` |
+| **Card** | `w-full max-w-sm rounded-xl bg-white p-8 shadow-md` | Same |
+| **Brand accent bar + title row** | Outer `mb-6 flex flex-col items-center text-center`; inner `mb-3 flex items-center gap-2`; bar `h-6 w-1 rounded-full bg-gray-800` (`aria-hidden`); title `text-base font-bold tracking-tight text-gray-900` — “InterTalent Admin” | Same |
+| **Subtitle** | `text-sm text-gray-600` — “Sign in to your account” | Same |
+| **Auth error message (server / sign-in failure)** | `mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900` with `role="alert"` | Same |
+| **Form fields — label** | `mb-1 block text-sm font-medium text-gray-700` | Same |
+| **Form fields — input (default)** | `w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400` (constants `INPUT_CLASS` / `INPUT_ERROR_CLASS` in file) | Same |
+| **Form fields — input (error state)** | `border-red-500` + `focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500` | Same |
+| **Field-level error line** | `mt-1 text-xs text-red-600` | Same |
+| **Submit button** | `inline-flex w-full items-center justify-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-50`; spinner when submitting: `h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent` | Same |
+| **Form stack** | `flex flex-col gap-4` on `<form>`; `noValidate` | Same |
+
+### 16b. Admin user list row
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **List container** | `divide-y divide-gray-100` on wrapper `div` around mapped rows | `admin/users/page.tsx` |
+| **Row container** | `flex items-center justify-between gap-3 px-4 py-3` | Same |
+| **Left cluster (avatar + text)** | `flex min-w-0 flex-1 items-center gap-3` | Same |
+| **Avatar circle (initials)** | `flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-900` (`aria-hidden`) | Same |
+| **Initials logic (`userInitials`)** | Trim → split on whitespace; empty → `?`; one word → first two letters uppercased; else first char of first + first char of last word, uppercased | Same |
+| **Name + “You” row** | Wrapper `min-w-0`; inner `flex flex-wrap items-center gap-2` | Same |
+| **Name** | `truncate text-sm font-semibold text-gray-900` | Same |
+| **“You” badge** | `rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700` — shown when row user id matches session user id | Same |
+| **Email** | `truncate text-xs text-gray-500` | Same |
+| **Middle cluster (role + status)** | `flex shrink-0 items-center gap-3` | Same |
+| **Role badge — `super_admin`** | `rounded-full bg-gray-900 px-2 py-0.5 text-xs font-medium text-white` — label `SUPER ADMIN` | Same |
+| **Role badge — `admin`** | `rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700` — label `ADMIN` | Same |
+| **Status — active** | `text-xs font-medium text-green-700` — `● Active` | Same |
+| **Status — inactive** | `text-xs font-medium text-gray-400` — `○ Inactive` | Same |
+| **Action cluster** | `flex shrink-0 items-center gap-2` | Same |
+| **Edit (icon only)** | `rounded-md border border-orange-500 p-1.5 text-orange-600 hover:bg-orange-50`; `aria-label={\`Edit ${u.name}\`}`; child `✏️` | Same |
+| **Delete (icon only)** | `rounded-md border border-red-500 p-1.5 text-red-600 hover:bg-red-50`; `aria-label={\`Delete ${u.name}\`}`; child `🗑` | Same |
+| **Self row** | Edit/Delete hidden when `isSelf(u)` | Same |
+
+### 16c. Admin user modals
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **CreateAdminUserModal — overlay** | `fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4` | `CreateAdminUserModal.tsx` |
+| **CreateAdminUserModal — panel** | `max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl`; `role="dialog"` `aria-modal="true"` `aria-labelledby="create-admin-user-title"` | Same |
+| **CreateAdminUserModal — title** | `mb-4 text-lg font-bold text-gray-900` — `👤 Add Admin User` | Same |
+| **CreateAdminUserModal — top validation alert** | `mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900` when `hasErrors` — “Please fix the errors below before continuing.” | Same |
+| **CreateAdminUserModal — form** | `flex flex-col gap-4`; labels `mb-1 block text-sm font-medium text-gray-700` + required `span` `text-red-500`; inputs/select: `w-full rounded-md border px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400` + `border-red-500` or `border-gray-300`; password helper `mt-1 text-xs text-gray-500` “Minimum 8 characters”; field errors `mt-1 text-xs text-red-600`; `errors.general` as `text-sm text-red-600`; `<hr className="border-gray-200" />`; footer `flex justify-end gap-2` — Cancel outline `rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-50`; primary `inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 transition-colors` + gray spinner — “Save User” | Same |
+| **CreateAdminUserModal — API** | `POST /api/admin/users` with JSON `{ name, email, password, role }`; maps `ApiErrorResponse` codes to field/general errors or `showToast` | Same |
+| **EditAdminUserModal — overlay / panel** | Same `z-[200]` overlay and `max-w-lg` panel pattern as Create; `aria-labelledby="edit-admin-user-title"`; title `✏️ Edit Admin User` | `EditAdminUserModal.tsx` |
+| **EditAdminUserModal — own user (`isOwnUser`)** | Compare `String(user.id)` to `String(currentUserId)`; on submit, if own user, force `bodyRole` / `bodyActive` from original `user` (cannot change role or inactive self) | Same |
+| **EditAdminUserModal — role select (own user)** | `disabled={isOwnUser}`; `title` “You cannot change your own role”; disabled visuals `disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70`; helper `mt-1 text-xs text-gray-500` “Your role cannot be changed here.” | Same |
+| **EditAdminUserModal — status toggles** | `flex flex-wrap gap-2`; Active/Inactive `button` `rounded-md px-4 py-2 text-sm font-medium transition-colors` — selected `bg-gray-900 text-white hover:bg-gray-700`, unselected `border border-gray-300 bg-white text-gray-800 hover:bg-gray-50`; Inactive `disabled={isOwnUser}` with `disabled:cursor-not-allowed disabled:opacity-50` and title “You cannot deactivate your own account here”; own-user note `mt-1 text-xs text-gray-500` “You cannot set your own account to inactive.” | Same |
+| **EditAdminUserModal — change password entry** | `text-sm font-medium text-gray-800 underline hover:text-gray-900` — `🔑 Change Password` opens nested modal | Same |
+| **EditAdminUserModal — API** | `PUT /api/admin/users/${user.id}` with `{ name, email, role, is_active }` | Same |
+| **ChangePasswordModal — overlay (stacking)** | `fixed inset-0 z-[210] flex items-center justify-center bg-black/40 p-4` — **higher than** edit/create `z-[200]` so it stacks above `EditAdminUserModal` | `ChangePasswordModal.tsx` |
+| **ChangePasswordModal — panel** | Same `max-w-lg` scrollable white panel as other form modals; `aria-labelledby="change-password-title"` | Same |
+| **ChangePasswordModal — title block** | `mb-1 text-lg font-bold text-gray-900` — `🔑 Change Password`; subtitle `mb-4 text-sm text-gray-600` — “For ” + `span` `font-semibold text-gray-900` `{user.name}` | Same |
+| **ChangePasswordModal — validation** | Top alert bar same as Create when `hasErrors`; client-side checks (required, min length 8, match) before `PUT`; `PUT /api/admin/users/${user.id}/password` with `{ password }` | Same |
+| **ChangePasswordModal — footer** | Cancel outline + primary “Update Password” with gray spinner (same primary button classes as Create user) | Same |
+| **DeleteAdminUserModal — overlay** | `fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4` | `DeleteAdminUserModal.tsx` |
+| **DeleteAdminUserModal — panel** | `w-full max-w-md rounded-xl bg-white p-6 shadow-xl` (no `max-h` / overflow-y on panel) | Same |
+| **DeleteAdminUserModal — structure** | Centered icon row `mb-4 flex justify-center`; circle `flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-xl text-gray-600` + `🗑`; title `mb-2 text-center text-lg font-bold text-gray-900` “Delete Admin User?”; body `mb-4 text-center text-sm text-gray-600` with name `font-semibold text-gray-900`; warning `mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900`; `hr` `mb-4 border-gray-200`; actions `flex justify-end gap-2` — Cancel outline; confirm `inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-colors` + spinner `border-red-400 border-t-transparent` — “Yes, Delete” | Same |
+| **DeleteAdminUserModal — API / toasts** | `DELETE /api/admin/users/${user.id}`; on `CANNOT_DELETE_LAST_SUPER_ADMIN` toast “Cannot delete the last super admin account” (`error`); success toast + `onSuccess(user.id)` | Same |
+
+### 16d. Sidebar logout section
+
+| Concern | Classes / pattern | Source |
+|--------|-------------------|--------|
+| **Placement** | After `</nav>`, inside sidebar root `flex h-full flex-col` — outer wrapper `mt-auto` pushes block to bottom | `ClientSidebar.tsx` |
+| **Spacing + divider shell** | Inner `div`: `border-t border-neutral-200 mt-4 pt-3` | Same |
+| **User block (when `session?.user`)** | `mb-2 px-1` | Same |
+| **User name** | `truncate text-xs font-medium text-gray-900` — `{session.user.name}` | Same |
+| **User email** | `truncate text-xs text-gray-500` — `{session.user.email}` | Same |
+| **Sign out button** | `w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50` | Same |
+| **Behavior** | `onClick={() => void signOut({ callbackUrl: '/admin/login' })}` (`signOut` from `next-auth/react`) | Same |
+
+---
+
 ## Appendix: Color swatch (branding details)
 
 | Element | Classes | Source |

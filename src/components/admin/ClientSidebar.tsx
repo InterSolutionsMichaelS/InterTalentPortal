@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { signOut, useSession } from 'next-auth/react';
 import type { Client } from '@/types/admin';
 
 function HighlightMatch({ text, query }: { text: string; query: string }) {
@@ -49,6 +50,9 @@ export function ClientSidebar({
   onRequestDelete,
   loading,
 }: ClientSidebarProps) {
+  const { data: session } = useSession();
+  const isSuperAdmin = session?.user?.role === 'super_admin';
+
   const searchActive = searchQuery.trim().length > 0;
   const noResults = searchActive && filteredClients.length === 0;
   const total = clients.length;
@@ -242,7 +246,34 @@ export function ClientSidebar({
         >
           👥 Support Team
         </Link>
+        {isSuperAdmin ? (
+          <Link href="/admin/users" className="hover:underline">
+            👤 Admin Users
+          </Link>
+        ) : null}
       </nav>
+
+      <div className="mt-auto">
+        <div className="border-t border-neutral-200 mt-4 pt-3">
+          {session?.user ? (
+            <div className="mb-2 px-1">
+              <p className="truncate text-xs font-medium text-gray-900">
+                {session.user.name}
+              </p>
+              <p className="truncate text-xs text-gray-500">
+                {session.user.email}
+              </p>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void signOut({ callbackUrl: '/admin/login' })}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
