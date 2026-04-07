@@ -59,7 +59,7 @@ export function EditContactModal({
     if (!contact) return;
     setName(contact.name);
     setMobile(contact.mobile);
-    setTitle(contact.title);
+    setTitle(contact.title ?? '');
     setEmail(contact.email);
     setProfileFile(null);
     setProfileKey((k) => k + 1);
