@@ -329,13 +329,17 @@ export function EditClientModal({
               }`}
             />
             <p className="mt-1 text-xs text-gray-500">
-              .jpg .png .webp — max 5 MB
+              .jpg .png .webp - max 5 MB
               {logoFile ? (
                 <span className="ml-2 text-gray-700">
                   {logoFile.name} (
                   {(logoFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </span>
               ) : null}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              PNG with transparent background recommended. Horizontal: 200×80px
+              · Square: 200×200px
             </p>
             {errors.logo ? (
               <p className="mt-1 text-xs text-red-600">{errors.logo}</p>
@@ -384,13 +388,17 @@ export function EditClientModal({
               }`}
             />
             <p className="mt-1 text-xs text-gray-500">
-              .jpg .png .webp — max 5 MB
+              .jpg .png .webp - max 5 MB
               {heroFile ? (
                 <span className="ml-2 text-gray-700">
                   {heroFile.name} (
                   {(heroFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </span>
               ) : null}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Recommended: 1920×600px, JPG or WebP. Place main subject in center or
+              left of image.
             </p>
             {errors.hero ? (
               <p className="mt-1 text-xs text-red-600">{errors.hero}</p>

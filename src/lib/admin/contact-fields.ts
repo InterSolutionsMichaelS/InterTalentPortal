@@ -5,9 +5,11 @@
 export const MAX_NAME_LEN = 255;
 export const MAX_MOBILE_LEN = 20;
 export const MAX_EMAIL_LEN = 255;
+export const MAX_TITLE_LEN = 100;
 
 export type ParsedContactFields = {
   name: string;
+  title: string | null;
   mobile: string | null;
   email: string | null;
 };
@@ -31,6 +33,7 @@ function isValidBasicEmail(s: string): boolean {
 
 export function parseContactFields(input: {
   name: unknown;
+  title?: unknown;
   mobile?: unknown;
   email?: unknown;
 }):
@@ -42,6 +45,20 @@ export function parseContactFields(input: {
   }
   if (nameRaw.length > MAX_NAME_LEN) {
     return { ok: false, code: 'FIELD_TOO_LONG' };
+  }
+
+  const titleSource = input.title;
+  let title: string | null;
+  if (titleSource === undefined || titleSource === null) {
+    title = null;
+  } else if (typeof titleSource === 'string') {
+    const t = titleSource.trim();
+    if (t.length > MAX_TITLE_LEN) {
+      return { ok: false, code: 'FIELD_TOO_LONG' };
+    }
+    title = t === '' ? null : t;
+  } else {
+    title = null;
   }
 
   const mobileRaw =
@@ -65,6 +82,7 @@ export function parseContactFields(input: {
     ok: true,
     value: {
       name: nameRaw,
+      title,
       mobile,
       email,
     },

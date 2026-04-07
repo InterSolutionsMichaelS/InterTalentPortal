@@ -14,6 +14,7 @@ interface ContactRow {
   id: number;
   client_id: number;
   name: string;
+  title: string | null;
   mobile: string | null;
   email: string | null;
   profile_image: string | null;
@@ -41,6 +42,7 @@ function mapContact(row: ContactRow) {
     id: row.id,
     client_id: row.client_id,
     name: row.name,
+    title: row.title ?? null,
     mobile: row.mobile ?? '',
     email: row.email ?? '',
     profile_image: row.profile_image,
@@ -57,7 +59,7 @@ async function fetchContactRow(
     .request()
     .input('id', sql.Int, id)
     .query(`
-      SELECT id, client_id, name, mobile, email, profile_image, created_at, updated_at
+      SELECT id, client_id, name, title, mobile, email, profile_image, created_at, updated_at
       FROM contacts
       WHERE id = @id
     `);
@@ -141,11 +143,13 @@ export async function PUT(
     }
 
     const nameRaw = formData.get('name');
+    const titleRaw = formData.get('title');
     const mobileRaw = formData.get('mobile');
     const emailRaw = formData.get('email');
 
     const parsed = parseContactFields({
       name: nameRaw,
+      title: typeof titleRaw === 'string' ? titleRaw : undefined,
       mobile: typeof mobileRaw === 'string' ? mobileRaw : undefined,
       email: typeof emailRaw === 'string' ? emailRaw : undefined,
     });
@@ -186,6 +190,7 @@ export async function PUT(
       .request()
       .input('id', sql.Int, id)
       .input('name', sql.NVarChar(255), v.name)
+      .input('title', sql.NVarChar(100), v.title)
       .input('mobile', sql.NVarChar(20), v.mobile)
       .input('email', sql.NVarChar(255), v.email)
       .input('profile_image', sql.NVarChar(500), profile_image)
@@ -193,6 +198,7 @@ export async function PUT(
         UPDATE contacts
         SET
           name = @name,
+          title = @title,
           mobile = @mobile,
           email = @email,
           profile_image = @profile_image,
