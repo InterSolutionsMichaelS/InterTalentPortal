@@ -41,6 +41,7 @@ export function CreateContactModal({
 }: CreateContactModalProps) {
   const { showToast } = useToast();
   const [name, setName] = useState('');
+  const [title, setTitle] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [profileFile, setProfileFile] = useState<File | null>(null);
@@ -50,6 +51,7 @@ export function CreateContactModal({
 
   const resetForm = useCallback(() => {
     setName('');
+    setTitle('');
     setMobile('');
     setEmail('');
     setProfileFile(null);
@@ -83,6 +85,7 @@ export function CreateContactModal({
     try {
       const fd = new FormData();
       fd.append('name', name.trim());
+      fd.append('title', title.trim());
       fd.append('mobile', mobile.trim());
       fd.append('email', email.trim());
       if (profileFile) {
@@ -184,6 +187,20 @@ export function CreateContactModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
+              Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Sales Associate"
+              maxLength={100}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Mobile Number
             </label>
             <input
@@ -245,7 +262,7 @@ export function CreateContactModal({
               }`}
             />
             <p className="mt-1 text-xs text-gray-500">
-              .jpg .png .webp — max 5 MB. If not uploaded, initials will be
+              .jpg .png .webp - max 5 MB. If not uploaded, initials will be
               shown.
               {profileFile ? (
                 <span className="ml-2 text-gray-700">{profileFile.name}</span>

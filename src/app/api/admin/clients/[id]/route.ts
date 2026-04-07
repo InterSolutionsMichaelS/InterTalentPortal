@@ -32,6 +32,7 @@ interface PropertyRow {
 interface ContactRow {
   id: number;
   name: string;
+  title: string | null;
   mobile: string | null;
   email: string | null;
   profile_image: string | null;
@@ -85,6 +86,7 @@ function mapContact(row: ContactRow) {
   return {
     id: row.id,
     name: row.name,
+    title: row.title ?? null,
     mobile: row.mobile ?? '',
     email: row.email ?? '',
     profile_image: row.profile_image,
@@ -141,7 +143,7 @@ export async function GET(
       .request()
       .input('clientId', sql.Int, id)
       .query(`
-        SELECT id, name, mobile, email, profile_image
+        SELECT id, name, title, mobile, email, profile_image
         FROM contacts
         WHERE client_id = @clientId
         ORDER BY id

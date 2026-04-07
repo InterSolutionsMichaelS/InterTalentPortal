@@ -290,49 +290,58 @@ export default function AdminContactsPage() {
               {contacts.map((c) => (
                 <div
                   key={c.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3"
+                  className="flex items-center gap-4 px-4 py-3"
                 >
-                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-xs font-semibold text-sky-900">
                     {c.profile_image ? (
-                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-sky-100">
-                        <img
-                          src={c.profile_image}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                      <img
+                        src={c.profile_image}
+                        alt={c.name}
+                        className="h-full w-full rounded-full object-cover"
+                      />
                     ) : (
-                      <div
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-900"
-                        aria-hidden
-                      >
-                        {contactInitials(c.name)}
-                      </div>
+                      contactInitials(c.name)
                     )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {c.name}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600">
-                        {c.mobile ? (
-                          <span className="truncate">📞 {c.mobile}</span>
-                        ) : null}
-                        {c.email ? (
-                          <span className="truncate">✉️ {c.email}</span>
-                        ) : null}
-                      </div>
-                    </div>
                   </div>
-                  <div className="ml-2 flex shrink-0 gap-2 sm:ml-4">
+
+                  <div className="min-w-0 w-[140px] shrink-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {c.name}
+                    </p>
+                    {c.title ? (
+                      <p className="truncate text-xs text-gray-500 italic">
+                        {c.title}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {c.mobile ? (
+                    <div className="hidden shrink-0 items-center gap-1 text-xs text-gray-600 sm:flex">
+                      📞
+                      <span>{c.mobile}</span>
+                    </div>
+                  ) : null}
+
+                  {c.email ? (
+                    <div className="hidden shrink-0 items-center gap-1 text-xs text-gray-600 md:flex">
+                      ✉️
+                      <span className="max-w-[180px] truncate">
+                        {c.email}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  <div className="flex items-center gap-2 ml-auto">
                     <button
                       type="button"
                       onClick={() => {
                         setEditContact(c);
                         setShowEditModal(true);
                       }}
-                      className="inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
+                      className="rounded-md border border-orange-500 p-1.5 text-orange-600 hover:bg-orange-50"
+                      aria-label={`Edit ${c.name}`}
                     >
-                      ✏️ Edit
+                      ✏️
                     </button>
                     <button
                       type="button"
@@ -340,9 +349,10 @@ export default function AdminContactsPage() {
                         setDeleteContactTarget(c);
                         setShowDeleteContactModal(true);
                       }}
-                      className="inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                      className="rounded-md border border-red-500 p-1.5 text-red-600 hover:bg-red-50"
+                      aria-label={`Delete ${c.name}`}
                     >
-                      🗑 Delete
+                      🗑
                     </button>
                   </div>
                 </div>
