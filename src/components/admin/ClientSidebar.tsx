@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
-import type { Client } from '@/types/admin';
+import type { AdminUser, Client } from '@/types/admin';
+import { ChangePasswordModal } from '@/components/admin/ChangePasswordModal';
 
 function HighlightMatch({ text, query }: { text: string; query: string }) {
   const q = query.trim();
@@ -51,7 +52,20 @@ export function ClientSidebar({
   loading,
 }: ClientSidebarProps) {
   const { data: session } = useSession();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const isSuperAdmin = session?.user?.role === 'super_admin';
+
+  const sessionAdminUser: AdminUser | null = session?.user
+    ? {
+        id: Number(session.user.id),
+        name: session.user.name ?? '',
+        email: session.user.email ?? '',
+        role: session.user.role ?? '',
+        is_active: true,
+        created_at: '',
+        updated_at: '',
+      }
+    : null;
 
   const searchActive = searchQuery.trim().length > 0;
   const noResults = searchActive && filteredClients.length === 0;
@@ -60,6 +74,7 @@ export function ClientSidebar({
     total === 1 ? '1 CLIENT' : `${total} CLIENTS`;
 
   return (
+    <>
     <div className="flex h-full flex-col px-3 py-4">
       <header className="mb-4 border-b border-neutral-200 pb-4">
         <div className="mb-0.5 flex items-center gap-2">
@@ -263,6 +278,13 @@ export function ClientSidebar({
               <p className="truncate text-xs text-gray-500">
                 {session.user.email}
               </p>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(true)}
+                className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                🔑 Change Password
+              </button>
             </div>
           ) : null}
           <button
@@ -275,5 +297,12 @@ export function ClientSidebar({
         </div>
       </div>
     </div>
+    <ChangePasswordModal
+      isOpen={showPasswordModal}
+      user={sessionAdminUser}
+      onClose={() => setShowPasswordModal(false)}
+      onSuccess={() => {}}
+    />
+    </>
   );
 }
