@@ -60,6 +60,7 @@ export interface Contact {
   /** Present on single-contact and mutation responses */
   client_id?: number;
   name: string;
+  title: string | null;
   mobile: string;
   email: string;
   profile_image: string | null;

@@ -324,18 +324,22 @@ export function EditClientModal({
                   });
                 }
               }}
-              className={`w-full rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm ${
+              className={`w-full cursor-pointer rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm text-gray-900 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-gray-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-gray-700 ${
                 errors.logo ? 'border-red-500' : 'border-gray-300'
               }`}
             />
             <p className="mt-1 text-xs text-gray-500">
-              .jpg .png .webp — max 5 MB
+              .jpg .png .webp - max 5 MB
               {logoFile ? (
                 <span className="ml-2 text-gray-700">
                   {logoFile.name} (
                   {(logoFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </span>
               ) : null}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              PNG with transparent background recommended. Horizontal: 200×80px
+              · Square: 200×200px
             </p>
             {errors.logo ? (
               <p className="mt-1 text-xs text-red-600">{errors.logo}</p>
@@ -379,18 +383,22 @@ export function EditClientModal({
                   });
                 }
               }}
-              className={`w-full rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm ${
+              className={`w-full cursor-pointer rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm text-gray-900 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-gray-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-gray-700 ${
                 errors.hero ? 'border-red-500' : 'border-gray-300'
               }`}
             />
             <p className="mt-1 text-xs text-gray-500">
-              .jpg .png .webp — max 5 MB
+              .jpg .png .webp - max 5 MB
               {heroFile ? (
                 <span className="ml-2 text-gray-700">
                   {heroFile.name} (
                   {(heroFile.size / (1024 * 1024)).toFixed(2)} MB)
                 </span>
               ) : null}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Recommended: 1920×600px, JPG or WebP. Place main subject in center or
+              left of image.
             </p>
             {errors.hero ? (
               <p className="mt-1 text-xs text-red-600">{errors.hero}</p>

@@ -47,6 +47,7 @@ export function EditContactModal({
 }: EditContactModalProps) {
   const { showToast } = useToast();
   const [name, setName] = useState('');
+  const [title, setTitle] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [profileFile, setProfileFile] = useState<File | null>(null);
@@ -58,6 +59,7 @@ export function EditContactModal({
     if (!contact) return;
     setName(contact.name);
     setMobile(contact.mobile);
+    setTitle(contact.title ?? '');
     setEmail(contact.email);
     setProfileFile(null);
     setProfileKey((k) => k + 1);
@@ -90,6 +92,7 @@ export function EditContactModal({
     try {
       const fd = new FormData();
       fd.append('name', name.trim());
+      fd.append('title', title.trim());
       fd.append('mobile', mobile.trim());
       fd.append('email', email.trim());
       if (profileFile) {
@@ -194,6 +197,20 @@ export function EditContactModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
+              Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Sales Associate"
+              maxLength={100}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Mobile Number
             </label>
             <input
@@ -274,12 +291,12 @@ export function EditContactModal({
                   });
                 }
               }}
-              className={`w-full rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm file:mr-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:px-3 file:py-1.5 file:text-sm ${
+              className={`w-full cursor-pointer rounded-md border bg-[#F5F5F0] px-2 py-2 text-sm text-gray-900 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-gray-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-gray-700 ${
                 errors.profile ? 'border-red-500' : 'border-gray-300'
               }`}
             />
             <p className="mt-1 text-xs text-gray-500">
-              .jpg .png .webp — max 5 MB
+              .jpg .png .webp - max 5 MB
               {profileFile ? (
                 <span className="ml-2 text-gray-700">{profileFile.name}</span>
               ) : null}
