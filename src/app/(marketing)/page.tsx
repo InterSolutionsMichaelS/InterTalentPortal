@@ -6,7 +6,9 @@ import EmptyState from '@/components/ui/EmptyState';
 import SearchParamsSyncer from '@/components/search/SearchParamsSyncer';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import LoadingManager from '@/components/ui/LoadingManager';
+import RequestTalentClient from '@/app/(marketing)/request-talent/request-talent-client';
 import InjectTalentModal from '@/components/search/InjectTalentModal';
+import WelcomeMessage from '../../components/WelcomeMessage';
 import { db } from '@/lib/db';
 
 // 🔒 Force this page to always fetch fresh data (server-rendered)
@@ -143,6 +145,9 @@ export default async function Home({
     sortDirection,
   });
 
+   console.log('WelcomeMessage type:', typeof WelcomeMessage);
+  console.log('WelcomeMessage value:', WelcomeMessage);
+
   return (
     <div className="bg-gray-50">
       {/* Loading Overlay */}
@@ -150,6 +155,9 @@ export default async function Home({
 
       {/* Sync URL params with Zustand store */}
       <SearchParamsSyncer />
+
+      {/* 🔥 ADDED 4/6/26 to have request talent overlay base page */}
+      <RequestTalentClient />
 
       {/* Hero Section with Search */}
       <HeroSearch />
@@ -169,6 +177,7 @@ export default async function Home({
           <div className="flex-1">
             {/* Results Header */}
             <div className="mb-6">
+              <WelcomeMessage />
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 Recommended Candidates
               </h2>

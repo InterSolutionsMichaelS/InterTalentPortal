@@ -159,68 +159,84 @@ export default function RequestTalentModal({
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="Your name"
-            required
-            value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
-          />
+          <div className="space-y-1">
+            <label className="text-sm text-gray-600">Your Name</label>
 
-          <input
-            type="email"
-            placeholder="Your email"
-            required
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
-          />
+                {/* Replaced placeholder with label for better mobile UX (date/time inputs don’t show placeholders reliably on mobile).
+        Also removed placeholder styling since it’s no longer used. */}
 
-          <input
-            type="tel"
-            placeholder="Phone number (optional)"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
-          />
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full border rounded-md px-3 py-2 text-gray-900"
+              />
+          </div>
+        
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Your Email</label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900"
+              />
+        </div>
+
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Phone number (optional)</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900"
+              />
+        </div>
           {/* Optional Scheduling Fields */}
 
-          <input
-            type="date"
-            placeholder="Start date"
-            value={formData.startDate}
-            onChange={(e) =>
-              setFormData({ ...formData, startDate: e.target.value })
-            }
-            className="w-full border rounded-md py-2 placeholder-gray-550 text-gray-900 appearance-none"
-          />
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Start Date</label>
+              <input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, startDate: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900 appearance-none"
+              />
+        </div>
 
-          <input
-            type="time"
-            placeholder="Start time"
-            value={formData.startTime}
-            onChange={(e) =>
-              setFormData({ ...formData, startTime: e.target.value })
-            }
-            className="w-full border rounded-md  py-2 placeholder-gray-500 text-gray-900 appearance-none"
-          />
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Start Time</label>
+              <input
+                type="time"
+                value={formData.startTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, startTime: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900 appearance-none"
+              />
+        </div>
 
-          <input
-            type="time"
-            placeholder="End time"
-            value={formData.endTime}
-            onChange={(e) =>
-              setFormData({ ...formData, endTime: e.target.value })
-            }
-            className="w-full border rounded-md  py-2 placeholder-gray-500 text-gray-900 appearance-none"
-          />
+        <div className="space-y-1">
+          <label className="text-sm text-gray-600">End Time</label>
+              <input
+                type="time"
+                value={formData.endTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, endTime: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900 appearance-none"
+              />
+        </div>
           {/* 🔒 Masked Employee ID (UI only) */}
           {mode === 'ASSOCIATE' && associateName && personId && (
             <p className="text-sm text-gray-500 mb-2">
@@ -235,7 +251,7 @@ export default function RequestTalentModal({
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value })
             }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
+            className="w-full border rounded-md px-3 py-2 placeholder-gray-600 text-gray-900"
           />
 
           <button
