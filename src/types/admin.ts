@@ -88,6 +88,57 @@ export interface DeleteContactResponse {
   message: string;
 }
 
+export interface CombinedContact {
+  id: number;
+  source: 'client' | 'property';
+  property_id: number | null;
+  property_name: string | null;
+  name: string;
+  title: string | null;
+  mobile: string | null;
+  email: string | null;
+  profile_image: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CombinedContactListResponse {
+  success: true;
+  data: CombinedContact[];
+}
+
+export interface PropertyContact {
+  id: number;
+  property_id: number;
+  name: string;
+  title: string | null;
+  mobile: string | null;
+  email: string | null;
+  profile_image: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PropertyContactListResponse {
+  success: true;
+  data: PropertyContact[];
+}
+
+export interface PropertyContactDetailResponse {
+  success: true;
+  data: PropertyContact;
+}
+
+export interface PropertyContactMutationResponse {
+  success: true;
+  data: PropertyContact;
+}
+
+export interface DeletePropertyContactResponse {
+  success: true;
+  message: string;
+}
+
 export interface ClientDetail extends Client {
   properties: Property[];
   contacts: Contact[];

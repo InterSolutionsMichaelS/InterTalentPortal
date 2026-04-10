@@ -11,6 +11,7 @@ import { CreatePropertyModal } from '@/components/admin/CreatePropertyModal';
 import { DeleteClientModal } from '@/components/admin/DeleteClientModal';
 import { DeletePropertyModal } from '@/components/admin/DeletePropertyModal';
 import { EditPropertyModal } from '@/components/admin/EditPropertyModal';
+import { PropertyContactsSection } from '@/components/admin/PropertyContactsSection';
 import { ToastProvider } from '@/components/admin/ToastContext';
 import { useAdminClients } from '@/hooks/useAdminClients';
 import type {
@@ -290,42 +291,45 @@ export default function AdminPropertiesPage() {
                 const addressLine = addressParts.join(', ');
 
                 return (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {p.name}
-                      </p>
-                      {addressLine ? (
-                        <p className="mt-0.5 truncate text-xs text-gray-500">
-                          {addressLine}
+                  <div key={p.id} className="flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {p.name}
                         </p>
-                      ) : null}
+                        {addressLine ? (
+                          <p className="mt-0.5 truncate text-xs text-gray-500">
+                            {addressLine}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="ml-4 flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditProperty(p);
+                            setShowEditModal(true);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeletePropertyTarget(p);
+                            setShowDeletePropertyModal(true);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          🗑 Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="ml-4 flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditProperty(p);
-                          setShowEditModal(true);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeletePropertyTarget(p);
-                          setShowDeletePropertyModal(true);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                      >
-                        🗑 Delete
-                      </button>
-                    </div>
+                    <PropertyContactsSection
+                      propertyId={p.id}
+                      propertyName={p.name}
+                    />
                   </div>
                 );
               })}

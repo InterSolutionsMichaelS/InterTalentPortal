@@ -4,26 +4,25 @@ import React, { useState } from 'react';
 import { useToast } from '@/components/admin/ToastContext';
 import type {
   ApiErrorResponse,
-  CombinedContact,
-  DeleteContactResponse,
   DeletePropertyContactResponse,
+  PropertyContact,
 } from '@/types/admin';
 
-type DeleteContactModalProps = {
+type DeletePropertyContactModalProps = {
   isOpen: boolean;
-  contact: CombinedContact | null;
-  clientName: string;
+  contact: PropertyContact | null;
+  propertyName: string;
   onClose: () => void;
   onSuccess: (contactId: number) => void;
 };
 
-export function DeleteContactModal({
+export function DeletePropertyContactModal({
   isOpen,
   contact,
-  clientName,
+  propertyName,
   onClose,
   onSuccess,
-}: DeleteContactModalProps) {
+}: DeletePropertyContactModalProps) {
   const { showToast } = useToast();
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,16 +31,10 @@ export function DeleteContactModal({
   const handleConfirm = async () => {
     setSubmitting(true);
     try {
-      const url =
-        contact.source === 'client'
-          ? `/api/admin/contacts/${contact.id}`
-          : `/api/admin/property-contacts/${contact.id}`;
-
-      const res = await fetch(url, {
+      const res = await fetch(`/api/admin/property-contacts/${contact.id}`, {
         method: 'DELETE',
       });
       const json = (await res.json()) as
-        | DeleteContactResponse
         | DeletePropertyContactResponse
         | ApiErrorResponse;
 
@@ -66,7 +59,7 @@ export function DeleteContactModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="delete-contact-title"
+        aria-labelledby="delete-property-contact-title"
         className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl"
       >
         <div className="mb-4 flex justify-center">
@@ -75,15 +68,15 @@ export function DeleteContactModal({
           </div>
         </div>
         <h2
-          id="delete-contact-title"
+          id="delete-property-contact-title"
           className="mb-2 text-center text-lg font-bold text-gray-900"
         >
-          Remove Support Contact?
+          Delete Property Contact?
         </h2>
         <p className="mb-4 text-center text-sm text-gray-600">
-          Remove{' '}
+          This will permanently remove{' '}
           <span className="font-semibold text-gray-900">{contact.name}</span>{' '}
-          from the {clientName} support team?
+          from {propertyName}&apos;s support team.
         </p>
         <div className="mb-4 border-l-4 border-orange-600 bg-orange-50 px-3 py-2 text-sm text-orange-900">
           Their profile photo will also be permanently deleted from the server.
@@ -107,7 +100,7 @@ export function DeleteContactModal({
             {submitting ? (
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
             ) : null}
-            Yes, Remove
+            Yes, Delete
           </button>
         </div>
       </div>

@@ -4,10 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/admin/ToastContext';
 import type {
   ApiErrorResponse,
-  ContactMutationResponse,
-  Property,
+  PropertyContact,
   PropertyContactMutationResponse,
-  PropertyListResponse,
 } from '@/types/admin';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -28,24 +26,22 @@ function validateImageFile(file: File): string | null {
 type FieldKey = 'name' | 'email' | 'profile' | 'general';
 type FormErrors = Partial<Record<FieldKey, string>>;
 
-type CreateContactModalProps = {
+type CreatePropertyContactModalProps = {
   isOpen: boolean;
-  clientId: number | null;
+  propertyId: number;
+  propertyName: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (contact: PropertyContact) => void;
 };
 
-export function CreateContactModal({
+export function CreatePropertyContactModal({
   isOpen,
-  clientId,
+  propertyId,
+  propertyName,
   onClose,
   onSuccess,
-}: CreateContactModalProps) {
+}: CreatePropertyContactModalProps) {
   const { showToast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(
-    null
-  );
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [mobile, setMobile] = useState('');
@@ -56,7 +52,6 @@ export function CreateContactModal({
   const [submitting, setSubmitting] = useState(false);
 
   const resetForm = useCallback(() => {
-    setSelectedPropertyId(null);
     setName('');
     setTitle('');
     setMobile('');
@@ -73,34 +68,8 @@ export function CreateContactModal({
     }
   }, [isOpen, resetForm]);
 
-  useEffect(() => {
-    if (!isOpen || clientId === null) {
-      setProperties([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/admin/clients/${clientId}/properties`);
-        const json = (await res.json()) as PropertyListResponse | ApiErrorResponse;
-        if (cancelled) return;
-        if (!json.success) {
-          setProperties([]);
-          return;
-        }
-        setProperties(json.data);
-      } catch {
-        if (!cancelled) setProperties([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, clientId]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (clientId === null) return;
 
     setErrors({});
     setSubmitting(true);
@@ -124,27 +93,20 @@ export function CreateContactModal({
         fd.append('profile_image', profileFile);
       }
 
-      const url =
-        selectedPropertyId === null
-          ? `/api/admin/clients/${clientId}/contacts`
-          : `/api/admin/properties/${selectedPropertyId}/contacts`;
-
-      const res = await fetch(url, {
-        method: 'POST',
-        body: fd,
-      });
+      const res = await fetch(
+        `/api/admin/properties/${propertyId}/contacts`,
+        {
+          method: 'POST',
+          body: fd,
+        }
+      );
 
       const json = (await res.json()) as
-        | ContactMutationResponse
         | PropertyContactMutationResponse
         | ApiErrorResponse;
 
       if (!json.success) {
-        if (json.error === 'CONTACT_NAME_EXISTS') {
-          setErrors({
-            name: 'A contact with this name already exists for this client.',
-          });
-        } else if (json.error === 'MISSING_NAME') {
+        if (json.error === 'MISSING_NAME') {
           setErrors({ name: 'Full name is required.' });
         } else if (json.error === 'INVALID_EMAIL') {
           setErrors({ email: 'Please enter a valid email address.' });
@@ -173,7 +135,7 @@ export function CreateContactModal({
       }
 
       showToast('Contact created successfully', 'success');
-      onSuccess();
+      onSuccess(json.data);
       onClose();
     } catch {
       showToast('Failed to save — please try again', 'error');
@@ -182,7 +144,7 @@ export function CreateContactModal({
     }
   };
 
-  if (!isOpen || clientId === null) return null;
+  if (!isOpen) return null;
 
   const hasErrors = Object.keys(errors).length > 0;
 
@@ -191,15 +153,16 @@ export function CreateContactModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="create-contact-title"
+        aria-labelledby="create-property-contact-title"
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
       >
         <h2
-          id="create-contact-title"
-          className="mb-4 text-lg font-bold text-gray-900"
+          id="create-property-contact-title"
+          className="mb-2 text-lg font-bold text-gray-900"
         >
-          👤 Add Support Contact
+          👥 Add Property Contact
         </h2>
+        <p className="-mt-2 mb-4 text-sm text-gray-500">For {propertyName}</p>
 
         {hasErrors ? (
           <div className="mb-4 border-l-4 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-900">
@@ -224,28 +187,6 @@ export function CreateContactModal({
             {errors.name ? (
               <p className="mt-1 text-xs text-red-600">{errors.name}</p>
             ) : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Assign to
-            </label>
-            <select
-              value={selectedPropertyId ?? ''}
-              onChange={(e) =>
-                setSelectedPropertyId(
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-            >
-              <option value="">Client Level (no property)</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div>
