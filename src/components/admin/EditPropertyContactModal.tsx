@@ -4,11 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/admin/ToastContext';
 import type {
   ApiErrorResponse,
-  CombinedContact,
-  ContactMutationResponse,
-  Property,
+  PropertyContact,
   PropertyContactMutationResponse,
-  PropertyListResponse,
 } from '@/types/admin';
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -35,23 +32,19 @@ function fileNameFromPublicPath(path: string | null): string | null {
 type FieldKey = 'name' | 'email' | 'profile' | 'general';
 type FormErrors = Partial<Record<FieldKey, string>>;
 
-type EditContactModalProps = {
+type EditPropertyContactModalProps = {
   isOpen: boolean;
-  clientId: number | null;
-  contact: CombinedContact | null;
+  contact: PropertyContact | null;
+  propertyName: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (contact: PropertyContact) => void;
 };
 
-export function EditContactModal({
-  isOpen,
-  clientId,
-  contact,
-  onClose,
-  onSuccess,
-}: EditContactModalProps) {
+export function EditPropertyContactModal(
+  props: EditPropertyContactModalProps
+) {
+  const { isOpen, contact, onClose, onSuccess } = props;
   const { showToast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
   const [name, setName] = useState('');
   const [title, setTitle] = useState('');
   const [mobile, setMobile] = useState('');
@@ -60,23 +53,9 @@ export function EditContactModal({
   const [profileKey, setProfileKey] = useState(0);
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitting, setSubmitting] = useState(false);
-  const [originalSource, setOriginalSource] = useState<'client' | 'property'>(
-    'client'
-  );
-  const [originalPropertyId, setOriginalPropertyId] = useState<number | null>(
-    null
-  );
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(
-    null
-  );
 
   const resetFromContact = useCallback(() => {
     if (!contact) return;
-    setOriginalSource(contact.source);
-    setOriginalPropertyId(contact.property_id);
-    setSelectedPropertyId(
-      contact.source === 'client' ? null : contact.property_id
-    );
     setName(contact.name);
     setMobile(contact.mobile ?? '');
     setTitle(contact.title ?? '');
@@ -92,76 +71,6 @@ export function EditContactModal({
       resetFromContact();
     }
   }, [isOpen, contact, resetFromContact]);
-
-  useEffect(() => {
-    if (!isOpen || clientId === null) {
-      setProperties([]);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`/api/admin/clients/${clientId}/properties`);
-        const json = (await res.json()) as PropertyListResponse | ApiErrorResponse;
-        if (cancelled) return;
-        if (!json.success) {
-          setProperties([]);
-          return;
-        }
-        setProperties(json.data);
-      } catch {
-        if (!cancelled) setProperties([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, clientId]);
-
-  const applyErrorJson = (json: ApiErrorResponse) => {
-    if (json.error === 'CONTACT_NAME_EXISTS') {
-      setErrors({
-        name: 'Another contact with this name already exists for this client.',
-      });
-    } else if (json.error === 'MISSING_NAME') {
-      setErrors({ name: 'Full name is required.' });
-    } else if (json.error === 'INVALID_EMAIL') {
-      setErrors({ email: 'Please enter a valid email address.' });
-    } else if (json.error === 'FIELD_TOO_LONG') {
-      setErrors({
-        general: 'One or more fields exceed the maximum length.',
-      });
-    } else if (json.error === 'FILE_TOO_LARGE') {
-      setErrors({
-        profile: 'File too large — maximum size is 5 MB',
-      });
-    } else if (json.error === 'UNSUPPORTED_FILE_TYPE') {
-      setErrors({
-        profile: 'Unsupported file type — use .jpg, .png, or .webp',
-      });
-    } else if (json.error === 'INVALID_FORM_DATA') {
-      setErrors({ general: 'Invalid form data. Please try again.' });
-    } else if (
-      json.error === 'CONTACT_NOT_FOUND' ||
-      json.error === 'PROPERTY_CONTACT_NOT_FOUND'
-    ) {
-      showToast('This contact no longer exists.', 'warning');
-      onClose();
-    } else if (json.error === 'PROPERTY_NOT_FOUND') {
-      showToast('This property was not found.', 'warning');
-    } else if (json.error === 'SAME_ASSIGNMENT') {
-      setErrors({
-        general: 'Choose a different assignment before saving.',
-      });
-    } else if (
-      json.error === 'MISSING_REQUIRED_FIELDS' ||
-      json.error === 'INVALID_SOURCE'
-    ) {
-      setErrors({ general: 'Invalid request. Please try again.' });
-    } else {
-      showToast('Failed to save — please try again', 'error');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,126 +88,57 @@ export function EditContactModal({
       }
     }
 
-    const fd = new FormData();
-    fd.append('name', name.trim());
-    fd.append('title', title.trim());
-    fd.append('mobile', mobile.trim());
-    fd.append('email', email.trim());
-    if (profileFile) {
-      fd.append('profile_image', profileFile);
-    }
-
-    const assignmentUnchanged =
-      (originalSource === 'client' && selectedPropertyId === null) ||
-      (originalSource === 'property' &&
-        selectedPropertyId !== null &&
-        selectedPropertyId === originalPropertyId);
-
     try {
-      if (assignmentUnchanged) {
-        const url =
-          originalSource === 'client'
-            ? `/api/admin/contacts/${contact.id}`
-            : `/api/admin/property-contacts/${contact.id}`;
-
-        const res = await fetch(url, {
-          method: 'PUT',
-          body: fd,
-        });
-
-        const json = (await res.json()) as
-          | ContactMutationResponse
-          | PropertyContactMutationResponse
-          | ApiErrorResponse;
-
-        if (!json.success) {
-          applyErrorJson(json);
-          setSubmitting(false);
-          return;
-        }
-
-        showToast('Contact updated successfully', 'success');
-        onSuccess();
-        onClose();
-        setSubmitting(false);
-        return;
+      const fd = new FormData();
+      fd.append('name', name.trim());
+      fd.append('title', title.trim());
+      fd.append('mobile', mobile.trim());
+      fd.append('email', email.trim());
+      if (profileFile) {
+        fd.append('profile_image', profileFile);
       }
 
-      if (clientId === null) {
-        showToast('Failed to save — please try again', 'error');
-        setSubmitting(false);
-        return;
-      }
-
-      const newSource =
-        selectedPropertyId === null ? 'client' : 'property';
-
-      const reassignRes = await fetch('/api/admin/contacts/reassign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contactId: contact.id,
-          currentSource: originalSource,
-          newSource,
-          newPropertyId: selectedPropertyId,
-          clientId,
-          name: name.trim(),
-          title: title.trim(),
-          mobile: mobile.trim(),
-          email: email.trim(),
-        }),
+      const res = await fetch(`/api/admin/property-contacts/${contact.id}`, {
+        method: 'PUT',
+        body: fd,
       });
 
-      const reassignJson = (await reassignRes.json()) as
-        | {
-            success: true;
-            data: {
-              id: number;
-              source: 'client' | 'property';
-              property_id: number | null;
-            };
-          }
+      const json = (await res.json()) as
+        | PropertyContactMutationResponse
         | ApiErrorResponse;
 
-      if (!reassignJson.success) {
-        applyErrorJson(reassignJson);
+      if (!json.success) {
+        if (json.error === 'MISSING_NAME') {
+          setErrors({ name: 'Full name is required.' });
+        } else if (json.error === 'INVALID_EMAIL') {
+          setErrors({ email: 'Please enter a valid email address.' });
+        } else if (json.error === 'FIELD_TOO_LONG') {
+          setErrors({
+            general: 'One or more fields exceed the maximum length.',
+          });
+        } else if (json.error === 'FILE_TOO_LARGE') {
+          setErrors({
+            profile: 'File too large — maximum size is 5 MB',
+          });
+        } else if (json.error === 'UNSUPPORTED_FILE_TYPE') {
+          setErrors({
+            profile: 'Unsupported file type — use .jpg, .png, or .webp',
+          });
+        } else if (json.error === 'INVALID_FORM_DATA') {
+          setErrors({ general: 'Invalid form data. Please try again.' });
+        } else if (json.error === 'PROPERTY_CONTACT_NOT_FOUND') {
+          showToast('This contact no longer exists.', 'warning');
+          onClose();
+        } else {
+          showToast('Failed to save — please try again', 'error');
+        }
         setSubmitting(false);
         return;
-      }
-
-      if (profileFile) {
-        const putFd = new FormData();
-        putFd.append('name', name.trim());
-        putFd.append('title', title.trim());
-        putFd.append('mobile', mobile.trim());
-        putFd.append('email', email.trim());
-        putFd.append('profile_image', profileFile);
-
-        const putUrl =
-          reassignJson.data.source === 'client'
-            ? `/api/admin/contacts/${reassignJson.data.id}`
-            : `/api/admin/property-contacts/${reassignJson.data.id}`;
-
-        const putRes = await fetch(putUrl, {
-          method: 'PUT',
-          body: putFd,
-        });
-        const putJson = (await putRes.json()) as
-          | ContactMutationResponse
-          | PropertyContactMutationResponse
-          | ApiErrorResponse;
-        if (!putJson.success) {
-          applyErrorJson(putJson);
-          setSubmitting(false);
-          return;
-        }
       }
 
       showToast('Contact updated successfully', 'success');
-      onSuccess();
+      onSuccess(json.data);
       onClose();
-      setSubmitting(false);
-      return;
     } catch {
       showToast('Failed to save — please try again', 'error');
     } finally {
@@ -316,14 +156,14 @@ export function EditContactModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="edit-contact-title"
+        aria-labelledby="edit-property-contact-title"
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-xl"
       >
         <h2
-          id="edit-contact-title"
+          id="edit-property-contact-title"
           className="mb-4 text-lg font-bold text-gray-900"
         >
-          ✏️ Edit Support Contact
+          ✏️ Edit Property Contact
         </h2>
 
         {hasErrors ? (
@@ -348,28 +188,6 @@ export function EditContactModal({
             {errors.name ? (
               <p className="mt-1 text-xs text-red-600">{errors.name}</p>
             ) : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Assign to
-            </label>
-            <select
-              value={selectedPropertyId ?? ''}
-              onChange={(e) =>
-                setSelectedPropertyId(
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-400"
-            >
-              <option value="">Client Level (no property)</option>
-              {properties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div>
