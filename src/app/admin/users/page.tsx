@@ -70,9 +70,6 @@ export default function AdminUsersPage() {
     );
   }, [clients, searchQuery]);
 
-  const mainNoSearchMatches =
-    searchQuery.trim().length > 0 && filteredClients.length === 0;
-
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     setUsersError(false);
@@ -127,41 +124,6 @@ export default function AdminUsersPage() {
         <div className="animate-pulse p-6 md:p-8">
           <div className="mb-6 h-9 w-64 max-w-full rounded bg-gray-200" />
           <div className="h-64 rounded-lg border border-gray-200 bg-gray-100" />
-        </div>
-      );
-    }
-
-    if (clients.length === 0) {
-      return (
-        <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
-          <p className="mb-4 max-w-md text-sm text-gray-600">
-            Create a client portal first to use the full admin sidebar. You can
-            still manage admin users once a client exists.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowCreateClientModal(true)}
-            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50"
-          >
-            + New Client
-          </button>
-        </div>
-      );
-    }
-
-    if (mainNoSearchMatches) {
-      return (
-        <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
-          <h1 className="mb-2 text-2xl font-bold text-gray-900">
-            No matching clients
-          </h1>
-          <button
-            type="button"
-            onClick={() => setSearchQuery('')}
-            className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50"
-          >
-            Clear search
-          </button>
         </div>
       );
     }

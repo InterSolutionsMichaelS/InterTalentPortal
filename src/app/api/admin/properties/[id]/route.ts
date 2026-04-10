@@ -219,6 +219,29 @@ export async function DELETE(
       return jsonError(404, 'PROPERTY_NOT_FOUND');
     }
 
+    const clientId = existing.client_id;
+    if (clientId != null) {
+      await pool
+        .request()
+        .input('propertyId', sql.Int, id)
+        .input('clientId', sql.Int, clientId)
+        .query(`
+        INSERT INTO contacts
+          (client_id, name, title, mobile, email, profile_image, created_at, updated_at)
+        SELECT
+          @clientId,
+          name,
+          title,
+          ISNULL(mobile, N''),
+          ISNULL(email, N''),
+          profile_image,
+          GETDATE(),
+          GETDATE()
+        FROM property_contacts
+        WHERE property_id = @propertyId
+      `);
+    }
+
     await pool.request().input('id', sql.Int, id).query(`
       DELETE FROM properties WHERE id = @id
     `);

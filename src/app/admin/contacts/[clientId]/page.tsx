@@ -15,8 +15,8 @@ import { useAdminClients } from '@/hooks/useAdminClients';
 import type {
   ApiErrorResponse,
   Client,
-  Contact,
-  ContactListResponse,
+  CombinedContact,
+  CombinedContactListResponse,
 } from '@/types/admin';
 
 function contactInitials(name: string): string {
@@ -41,7 +41,7 @@ export default function AdminContactsPage() {
     addClient,
     removeClient,
   } = useAdminClients();
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contacts, setContacts] = useState<CombinedContact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateClientModal, setShowCreateClientModal] = useState(false);
@@ -53,9 +53,9 @@ export default function AdminContactsPage() {
   const [deleteClientTarget, setDeleteClientTarget] = useState<Client | null>(
     null
   );
-  const [editContact, setEditContact] = useState<Contact | null>(null);
+  const [editContact, setEditContact] = useState<CombinedContact | null>(null);
   const [deleteContactTarget, setDeleteContactTarget] =
-    useState<Contact | null>(null);
+    useState<CombinedContact | null>(null);
   const [contactsError, setContactsError] = useState<string | null>(null);
 
   const filteredClients = useMemo(() => {
@@ -78,8 +78,10 @@ export default function AdminContactsPage() {
     setLoadingContacts(true);
     setContactsError(null);
     try {
-      const res = await fetch(`/api/admin/clients/${cid}/contacts`);
-      const json = (await res.json()) as ContactListResponse | ApiErrorResponse;
+      const res = await fetch(`/api/admin/clients/${cid}/all-contacts`);
+      const json = (await res.json()) as
+        | CombinedContactListResponse
+        | ApiErrorResponse;
       if (!json.success) {
         setContacts([]);
         if (json.error === 'CLIENT_NOT_FOUND') {
@@ -217,6 +219,9 @@ export default function AdminContactsPage() {
               👥 Support Team
               {selectedClient ? ` · ${selectedClient.name}` : ''}
             </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Showing all client and property contacts
+            </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
             <button
@@ -289,7 +294,7 @@ export default function AdminContactsPage() {
             <div className="divide-y divide-gray-100">
               {contacts.map((c) => (
                 <div
-                  key={c.id}
+                  key={`${c.source}-${c.id}`}
                   className="flex items-center gap-4 px-4 py-3"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-xs font-semibold text-sky-900">
@@ -304,10 +309,21 @@ export default function AdminContactsPage() {
                     )}
                   </div>
 
-                  <div className="min-w-0 w-[140px] shrink-0">
-                    <p className="truncate text-sm font-semibold text-gray-900">
-                      {c.name}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-gray-900">
+                        {c.name}
+                      </p>
+                      {c.source === 'client' ? (
+                        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                          Client Level
+                        </span>
+                      ) : (
+                        <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+                          {c.property_name ?? 'Property'}
+                        </span>
+                      )}
+                    </div>
                     {c.title ? (
                       <p className="truncate text-xs text-gray-500 italic">
                         {c.title}
@@ -406,6 +422,7 @@ export default function AdminContactsPage() {
 
       <EditContactModal
         isOpen={showEditModal}
+        clientId={clientIdValid ? clientId : null}
         contact={editContact}
         onClose={() => {
           setShowEditModal(false);
