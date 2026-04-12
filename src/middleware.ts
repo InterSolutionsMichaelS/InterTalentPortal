@@ -94,12 +94,20 @@ export async function middleware(request: NextRequest) {
   if (slug) {
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = `/client-portal/${slug}${pathname}`;
-    return NextResponse.rewrite(rewriteUrl);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-client-portal-rewrite', '1');
+    return NextResponse.rewrite(rewriteUrl, {
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|robots\\.txt|.*\\.webmanifest|.*\\.woff2?|.*\\.ttf|.*\\.eot|.*\\.webp|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.gif|.*\\.ico).*)',
+  ],
 };

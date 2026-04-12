@@ -1,7 +1,45 @@
 import type React from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getClientBySlug } from '@/lib/client-portal/get-client-by-slug';
 import { ClientPortalProvider } from '@/contexts/ClientPortalContext';
+import ClientPortalFooter from '@/components/client-portal/ClientPortalFooter';
+
+const defaultIcons: Metadata['icons'] = {
+  icon: [{ url: '/icon.png', type: 'image/png' }],
+  shortcut: '/icon.png',
+  apple: '/icon.png',
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await getClientBySlug(slug);
+
+  if (!data) {
+    return {
+      title: 'InterSolutions Talent',
+      description: 'Find the right Professional',
+      icons: defaultIcons,
+    };
+  }
+
+  const { client } = data;
+
+  return {
+    title: `${client.name} | InterSolutions Talent`,
+    description: `Find talent for ${client.name} properties`,
+    icons: defaultIcons,
+    openGraph: {
+      title: `${client.name} | InterSolutions`,
+      description: `Find talent for ${client.name}`,
+      ...(client.hero_url ? { images: [{ url: client.hero_url }] } : {}),
+    },
+  };
+}
 
 interface ClientPortalLayoutProps {
   children: React.ReactNode;
@@ -27,20 +65,9 @@ export default async function ClientPortalLayout({
   return (
     <ClientPortalProvider value={data}>
       <div style={cssVars} className="min-h-screen bg-white text-gray-900">
-        <header className="border-b border-gray-200 bg-[var(--color-primary)] text-white">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <div className="text-sm font-semibold">{data.client.name}</div>
-            <nav className="text-xs opacity-90">Client Portal</nav>
-          </div>
-        </header>
-
         <main>{children}</main>
 
-        <footer className="border-t border-gray-200 bg-gray-50">
-          <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-gray-600">
-            Powered by InterTalent
-          </div>
-        </footer>
+        <ClientPortalFooter />
       </div>
     </ClientPortalProvider>
   );

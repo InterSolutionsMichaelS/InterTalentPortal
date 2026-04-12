@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { getPool, sql } from '@/lib/db/clients/azure-sql';
 import type {
   ClientPortalClient,
@@ -25,8 +26,10 @@ interface PropertyRow {
   zip: string | null;
 }
 
-interface ContactRow {
+interface CombinedContactRow {
+  source: string;
   id: number;
+  property_id: number | null;
   name: string;
   title: string | null;
   mobile: string | null;
@@ -34,7 +37,7 @@ interface ContactRow {
   profile_image: string | null;
 }
 
-export async function getClientBySlug(
+export const getClientBySlug = cache(async function getClientBySlug(
   slug: string
 ): Promise<ClientPortalData | null> {
   const normalizedSlug = slug.trim().toLowerCase();
@@ -85,17 +88,38 @@ export async function getClientBySlug(
 
     const contactsResult = await pool
       .request()
-      .input('clientId', sql.Int, clientId).query<ContactRow>(`
-        SELECT
-          id,
-          name,
-          title,
-          mobile,
-          email,
-          profile_image
-        FROM contacts
-        WHERE client_id = @clientId
-        ORDER BY name ASC
+      .input('clientId', sql.Int, clientId).query<CombinedContactRow>(`
+        SELECT * FROM (
+          SELECT
+            CAST('client' AS VARCHAR(20)) AS source,
+            c.id,
+            CAST(NULL AS INT) AS property_id,
+            c.name,
+            c.title,
+            c.mobile,
+            c.email,
+            c.profile_image
+          FROM contacts c
+          WHERE c.client_id = @clientId
+
+          UNION ALL
+
+          SELECT
+            CAST('property' AS VARCHAR(20)) AS source,
+            pc.id,
+            pc.property_id,
+            pc.name,
+            pc.title,
+            pc.mobile,
+            pc.email,
+            pc.profile_image
+          FROM property_contacts pc
+          INNER JOIN properties p ON p.id = pc.property_id
+          WHERE p.client_id = @clientId
+        ) AS combined
+        ORDER BY
+          CASE WHEN source = 'client' THEN 0 ELSE 1 END,
+          name ASC
       `);
 
     const client: ClientPortalClient = {
@@ -122,6 +146,8 @@ export async function getClientBySlug(
     const contacts: ClientPortalContact[] = contactsResult.recordset.map(
       (row) => ({
         id: row.id,
+        source: row.source === 'property' ? 'property' : 'client',
+        property_id: row.property_id,
         name: row.name,
         title: row.title,
         mobile: row.mobile,
@@ -139,4 +165,4 @@ export async function getClientBySlug(
     console.error('Failed to fetch client portal data by slug:', error);
     return null;
   }
-}
+});

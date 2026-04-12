@@ -19,6 +19,8 @@ export interface ClientPortalProperty {
 
 export interface ClientPortalContact {
   id: number;
+  source: 'client' | 'property';
+  property_id: number | null;
   name: string;
   title: string | null;
   mobile: string | null;
