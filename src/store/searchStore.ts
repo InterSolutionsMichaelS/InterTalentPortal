@@ -85,6 +85,12 @@ export interface SearchFilters {
   bookmarkedIds: string[];
   showBookmarksOnly: boolean;
 
+  // Office / property name filter (hero fallback when property has no zip/city)
+  office: string;
+
+  sortBy: 'name' | 'location' | 'profession';
+  sortDirection: 'asc' | 'desc';
+
   // Loading state
   isLoading: boolean;
 }
@@ -111,6 +117,7 @@ interface SearchStore extends SearchFilters {
   // Bookmark actions
   toggleBookmark: (profileId: string) => void;
   setShowBookmarksOnly: (show: boolean) => void;
+  setOffice: (office: string) => void;
 
   // Loading actions
   setIsLoading: (loading: boolean) => void;
@@ -138,6 +145,9 @@ const initialState: SearchFilters = {
   professionsLoading: false,
   bookmarkedIds: [],
   showBookmarksOnly: false,
+  office: '',
+  sortBy: 'name',
+  sortDirection: 'asc',
   isLoading: false,
 };
 
@@ -220,6 +230,13 @@ export const useSearchStore = create<SearchStore>()(
         })),
 
       setShowBookmarksOnly: (show) => set({ showBookmarksOnly: show }),
+
+      setOffice: (office) => set({ office: office.trim() }),
+
+      setSortBy: (sortBy: 'name' | 'location' | 'profession') =>
+        set({ sortBy }),
+      setSortDirection: (sortDirection: 'asc' | 'desc') =>
+        set({ sortDirection }),
 
       setIsLoading: (loading) => set({ isLoading: loading }),
 
@@ -330,6 +347,7 @@ export const useSearchStore = create<SearchStore>()(
         if (state.city) params.set('city', state.city);
         if (state.state) params.set('state', state.state);
         if (state.zipCode) params.set('zip', state.zipCode);
+        if (state.office) params.set('office', state.office);
 
         // Handle multiple keywords - join with comma
         if (state.keywords.length > 0) {
@@ -351,6 +369,13 @@ export const useSearchStore = create<SearchStore>()(
           params.set('professions', state.selectedProfessions.join(','));
         }
         if (state.showBookmarksOnly) params.set('bookmarks', 'true');
+
+        if (state.sortBy && state.sortBy !== 'name') {
+          params.set('sortBy', state.sortBy);
+        }
+        if (state.sortDirection && state.sortDirection !== 'asc') {
+          params.set('sortDirection', state.sortDirection);
+        }
 
         return params;
       },
