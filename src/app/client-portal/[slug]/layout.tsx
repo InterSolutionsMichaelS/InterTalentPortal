@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getClientBySlug } from '@/lib/client-portal/get-client-by-slug';
 import { ClientPortalProvider } from '@/contexts/ClientPortalContext';
 import ClientPortalFooter from '@/components/client-portal/ClientPortalFooter';
+import ClientPortalHeader from '@/components/client-portal/ClientPortalHeader';
 
 const defaultIcons: Metadata['icons'] = {
   icon: [{ url: '/icon.png', type: 'image/png' }],
@@ -65,6 +66,7 @@ export default async function ClientPortalLayout({
   return (
     <ClientPortalProvider value={data}>
       <div style={cssVars} className="min-h-screen bg-white text-gray-900">
+        <ClientPortalHeader />
         <main>{children}</main>
 
         <ClientPortalFooter />

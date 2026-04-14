@@ -114,7 +114,7 @@ export default function ClientPortalContactCard() {
 
   const displayContacts = useMemo(() => {
     if (!selectedProperty) {
-      return contacts;
+      return [];
     }
 
     const propertyContacts = contacts.filter(

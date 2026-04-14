@@ -74,9 +74,6 @@ export default function ClientPortalHero() {
 
   const [selectedProfession, setSelectedProfession] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
-  const [clientLogoFailed, setClientLogoFailed] = useState(false);
-  const [intersolutionsLogoFailed, setIntersolutionsLogoFailed] =
-    useState(false);
 
   useEffect(() => {
     void fetchProfessions();
@@ -136,6 +133,12 @@ export default function ClientPortalHero() {
           params.set('office', selectedProperty.name.trim());
         }
       }
+
+      const currentRadius = params.get('radius');
+
+      if (!currentRadius) {
+        params.set('radius', '15');
+      }
     }
 
     const next = params.toString();
@@ -167,30 +170,7 @@ export default function ClientPortalHero() {
 
       <div className="absolute inset-0 bg-black/50"></div>
 
-      <div className="relative container mx-auto px-4 py-12 flex flex-col h-[600px]">
-        <div className="flex w-full shrink-0 items-center justify-between">
-          {!intersolutionsLogoFailed ? (
-            <img
-              src="/InterSolutions_Trademark_White.webp"
-              alt="InterSolutions"
-              className="h-8 w-auto object-contain md:h-10"
-              onError={() => setIntersolutionsLogoFailed(true)}
-            />
-          ) : null}
-          {client.logo_url && !clientLogoFailed ? (
-            <img
-              src={client.logo_url}
-              alt={client.name}
-              className="h-10 w-auto object-contain"
-              onError={() => setClientLogoFailed(true)}
-            />
-          ) : (
-            <span className="text-sm font-semibold text-white">
-              {client.name}
-            </span>
-          )}
-        </div>
-
+      <div className="relative container mx-auto flex h-[600px] flex-col px-4 py-12 pt-24 md:pt-28">
         <div className="flex min-h-0 flex-1 flex-col justify-end">
           <div className="max-w-2xl text-left mb-8 md:mb-12">
             <p className="text-sm md:text-base text-gray-200 mb-2 tracking-wide">
