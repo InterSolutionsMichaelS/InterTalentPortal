@@ -149,8 +149,41 @@ export async function GET(
         ORDER BY id
       `);
 
+    const contactCountRes = await pool
+      .request()
+      .input('clientId', sql.Int, id)
+      .query(`
+        SELECT
+          (SELECT COUNT(*) FROM contacts WHERE client_id = @clientId)
+          +
+          (SELECT COUNT(*) FROM property_contacts pc
+           INNER JOIN properties p ON p.id = pc.property_id
+           WHERE p.client_id = @clientId) AS total_contacts
+      `);
+
     const properties = (propsRes.recordset as PropertyRow[]).map(mapProperty);
-    const contacts = (contactsRes.recordset as ContactRow[]).map(mapContact);
+    const mappedContacts = (contactsRes.recordset as ContactRow[]).map(
+      mapContact
+    );
+    const totalContacts = Number(
+      (contactCountRes.recordset[0] as { total_contacts: number } | undefined)
+        ?.total_contacts ?? 0
+    );
+    const padding = Math.max(0, totalContacts - mappedContacts.length);
+    const contacts =
+      padding === 0
+        ? mappedContacts
+        : [
+            ...mappedContacts,
+            ...Array.from({ length: padding }, (_, i) => ({
+              id: -(i + 1),
+              name: '',
+              title: null as string | null,
+              mobile: '',
+              email: '',
+              profile_image: null as string | null,
+            })),
+          ];
 
     const data = {
       ...mapClientList(clientRow),

@@ -1,7 +1,18 @@
+import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import Script from 'next/script';
 import SearchParamsSyncer from '@/components/search/SearchParamsSyncer';
 import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'InterSolutions Talent',
+  description: 'Find the right Professional to complete the job.',
+  icons: {
+    icon: [{ url: '/icon.png', type: 'image/png' }],
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
+};
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
