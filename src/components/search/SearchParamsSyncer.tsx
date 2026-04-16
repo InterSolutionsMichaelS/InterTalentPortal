@@ -9,6 +9,7 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSearchStore } from '@/store/searchStore';
+import { useCampaignStore } from '@/store/campaignStore'
 
 export default function SearchParamsSyncer() {
   const searchParams = useSearchParams();
@@ -31,6 +32,9 @@ export default function SearchParamsSyncer() {
   const setShowBookmarksOnly = useSearchStore(
     (state) => state.setShowBookmarksOnly
   );
+  // added on 4/15 by MS for TT campaign param pasthrough 
+  const setCampaign = useCampaignStore((s) => s.setCampaign);
+  const setHydrated = useCampaignStore((s) => s.setHydrated);
 
   useEffect(() => {
     // Only sync once on mount or when URL changes
@@ -52,6 +56,30 @@ export default function SearchParamsSyncer() {
           .filter(Boolean)
       : [];
     const showBookmarks = searchParams.get('bookmarks') === 'true';
+
+    // added on 4/15 by MS for TT campaign param pasthrough 
+    const contactName = searchParams.get('contactName');
+    const customerName = searchParams.get('customerName');
+    const department = searchParams.get('department');
+    const campaignLocation = searchParams.get('location');
+
+    const hasCampaignParams =
+      contactName || customerName || department || campaignLocation;
+
+    // 👇 THEN session fallback
+    if (!hasCampaignParams) {
+      const stored = sessionStorage.getItem('campaignData');
+
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setCampaign(parsed);
+        } catch {
+          console.warn('Failed to parse session campaign data');
+        }
+      }
+    }
+
 
     // Update store (these are stable functions)
     setCity(city);
@@ -84,6 +112,18 @@ export default function SearchParamsSyncer() {
     setRadiusEnabled(radiusEnabled);
     setSelectedProfessions(professions);
     setShowBookmarksOnly(showBookmarks);
+    
+    
+
+    // added on 4/15 by MS for TT campaign param pasthrough 
+    if (contactName || customerName || department || campaignLocation) {
+      setCampaign({
+        contactName,
+        customerName,
+        department,
+        location: campaignLocation,
+      });
+    }
 
     // Reconstruct location string for hero search
     let locationStr = '';
@@ -120,7 +160,7 @@ export default function SearchParamsSyncer() {
         }
       }, 100);
     }
-
+    setHydrated(true);
     hasInitialized.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]); // Only depend on params string
