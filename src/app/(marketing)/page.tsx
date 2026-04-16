@@ -145,8 +145,6 @@ export default async function Home({
     sortDirection,
   });
 
-   console.log('WelcomeMessage type:', typeof WelcomeMessage);
-  console.log('WelcomeMessage value:', WelcomeMessage);
 
   return (
     <div className="bg-gray-50">
