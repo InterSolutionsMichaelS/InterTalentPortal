@@ -25,6 +25,13 @@ function propertyIdFromSearchParams(
   properties: ClientPortalProperty[],
   sp: URLSearchParams
 ): string {
+  const propertyIdParam = sp.get('propertyId')?.trim();
+  if (propertyIdParam && /^\d+$/.test(propertyIdParam)) {
+    const matched = properties.find(
+      (p) => String(p.id) === propertyIdParam
+    );
+    if (matched) return String(matched.id);
+  }
   const office = sp.get('office')?.trim();
   if (office) {
     const byOffice = properties.find((p) => p.name.trim() === office);
@@ -139,6 +146,10 @@ export default function ClientPortalHero() {
       if (!currentRadius) {
         params.set('radius', '15');
       }
+
+      params.set('propertyId', String(selectedProperty.id));
+    } else {
+      params.delete('propertyId');
     }
 
     const next = params.toString();
@@ -263,6 +274,7 @@ export default function ClientPortalHero() {
                         params.delete('state');
                         params.delete('office');
                         params.delete('zipCodes');
+                        params.delete('propertyId');
 
                         const base = getPortalBase();
                         const qs = params.toString();
