@@ -88,6 +88,9 @@ export interface SearchFilters {
   // Office / property name filter (hero fallback when property has no zip/city)
   office: string;
 
+  /** Client portal: selected property id mirrored in URL (?propertyId=) */
+  propertyId: number | null;
+
   sortBy: 'name' | 'location' | 'profession';
   sortDirection: 'asc' | 'desc';
 
@@ -118,6 +121,7 @@ interface SearchStore extends SearchFilters {
   toggleBookmark: (profileId: string) => void;
   setShowBookmarksOnly: (show: boolean) => void;
   setOffice: (office: string) => void;
+  setPropertyId: (id: number | null) => void;
 
   // Loading actions
   setIsLoading: (loading: boolean) => void;
@@ -146,6 +150,7 @@ const initialState: SearchFilters = {
   bookmarkedIds: [],
   showBookmarksOnly: false,
   office: '',
+  propertyId: null,
   sortBy: 'name',
   sortDirection: 'asc',
   isLoading: false,
@@ -233,6 +238,8 @@ export const useSearchStore = create<SearchStore>()(
 
       setOffice: (office) => set({ office: office.trim() }),
 
+      setPropertyId: (id) => set({ propertyId: id }),
+
       setSortBy: (sortBy: 'name' | 'location' | 'profession') =>
         set({ sortBy }),
       setSortDirection: (sortDirection: 'asc' | 'desc') =>
@@ -270,6 +277,7 @@ export const useSearchStore = create<SearchStore>()(
           ...initialState,
           bookmarkedIds: get().bookmarkedIds, // Keep bookmarks when clearing filters
           professionsList: get().professionsList, // Keep professions list when clearing
+          propertyId: null,
         }),
 
       /**
@@ -348,6 +356,10 @@ export const useSearchStore = create<SearchStore>()(
         if (state.state) params.set('state', state.state);
         if (state.zipCode) params.set('zip', state.zipCode);
         if (state.office) params.set('office', state.office);
+
+        if (state.propertyId) {
+          params.set('propertyId', String(state.propertyId));
+        }
 
         // Handle multiple keywords - join with comma
         if (state.keywords.length > 0) {

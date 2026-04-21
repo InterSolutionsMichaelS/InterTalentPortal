@@ -37,7 +37,7 @@ export default function SearchParamsSyncer() {
   const setHydrated = useCampaignStore((s) => s.setHydrated);
   //merged on 4/16 by MS 
   const setOffice = useSearchStore((state) => state.setOffice);
-
+  const setPropertyId = useSearchStore((state) => state.setPropertyId);
 
   useEffect(() => {
     // Only sync once on mount or when URL changes
@@ -61,6 +61,11 @@ export default function SearchParamsSyncer() {
       : [];
     const showBookmarks = searchParams.get('bookmarks') === 'true';
     const officeParam = searchParams.get('office') || '';
+    const propertyIdParam = searchParams.get('propertyId');
+    const propertyId =
+      propertyIdParam && /^\d+$/.test(propertyIdParam)
+        ? Number(propertyIdParam)
+        : null;
 
     // added on 4/15 by MS for TT campaign param pasthrough 
     const contactName = searchParams.get('contactName');
@@ -116,8 +121,7 @@ export default function SearchParamsSyncer() {
     setRadiusEnabled(radiusEnabled);
     setSelectedProfessions(professions);
     setShowBookmarksOnly(showBookmarks);
-    
-    
+    setPropertyId(propertyId);
 
     // added on 4/15 by MS for TT campaign param pasthrough 
     if (contactName || customerName || department || campaignLocation) {

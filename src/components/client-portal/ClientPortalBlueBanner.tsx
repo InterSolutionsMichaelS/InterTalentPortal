@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useSearchStore } from '@/store/searchStore';
 import { useClientPortal } from '@/contexts/ClientPortalContext';
 
 export default function ClientPortalBlueBanner() {
+  const router = useRouter();
   const { client } = useClientPortal();
   const bookmarkedIds = useSearchStore((state) => state.bookmarkedIds);
   const showBookmarksOnly = useSearchStore((state) => state.showBookmarksOnly);
@@ -25,6 +26,25 @@ export default function ClientPortalBlueBanner() {
     return `/client-portal/${client.slug}`;
   };
 
+  const pushBookmarksView = () => {
+    const params = new URLSearchParams(
+      typeof window !== 'undefined' ? window.location.search : ''
+    );
+    params.set('bookmarks', 'true');
+    const base = getPortalBase();
+    router.push(`${base}?${params.toString()}`);
+  };
+
+  const pushShowAllProfiles = () => {
+    const params = new URLSearchParams(
+      typeof window !== 'undefined' ? window.location.search : ''
+    );
+    params.delete('bookmarks');
+    const qs = params.toString();
+    const base = getPortalBase();
+    router.push(qs ? `${base}?${qs}` : base);
+  };
+
   return (
     <div className="bg-[var(--color-primary)] text-white border-b-2 border-[rgba(255,255,255,0.2)]">
       <div className="mx-auto px-4 md:px-20 py-6 md:py-6 max-w-[1440px] min-h-[62px] flex flex-col md:flex-row items-center justify-center md:justify-between gap-4">
@@ -43,8 +63,9 @@ export default function ClientPortalBlueBanner() {
 
         {/* Toggle between All Profiles and Bookmarks */}
         {showBookmarksOnly ? (
-          <Link
-            href={getPortalBase()}
+          <button
+            type="button"
+            onClick={pushShowAllProfiles}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium whitespace-nowrap"
           >
             <svg
@@ -61,10 +82,11 @@ export default function ClientPortalBlueBanner() {
               />
             </svg>
             Show All Profiles
-          </Link>
+          </button>
         ) : (
-          <Link
-            href={`${getPortalBase()}?bookmarks=true`}
+          <button
+            type="button"
+            onClick={pushBookmarksView}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium whitespace-nowrap"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -76,7 +98,7 @@ export default function ClientPortalBlueBanner() {
                 {bookmarkCount}
               </span>
             )}
-          </Link>
+          </button>
         )}
       </div>
     </div>
