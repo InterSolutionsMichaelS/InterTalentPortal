@@ -27,8 +27,8 @@ export default function WelcomeMessage() {
   const displayLocation = location || 'areas across the U.S';
   
 
-  // Only show "of customer" if BOTH exist
-  const showCustomer = propertyName && customerName;
+  // Only show "of customer" if BOTH exist and hide of customer if they are the same name
+  const showCustomer = propertyName && customerName && propertyName.trim().toLowerCase() !== customerName.trim().toLowerCase();
 
   return (
     <div className="mb-6">
