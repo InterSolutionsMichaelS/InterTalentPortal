@@ -103,4 +103,22 @@ export interface IDatabase {
   insertProfiles(profiles: Profile[]): Promise<void>;
   updateProfile(id: string, data: Partial<Profile>): Promise<void>;
   deleteProfiles(ids: string[]): Promise<void>;
+  insertTalentRequest(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    notes: string;
+    location?: string;
+    personId?: string;
+    associateId?: string;
+    associateName?: string;
+    startDate?: string;
+    startTime?: string;
+    endTime?: string;
+    requestMode?: string;
+    campaign?: string;
+    customerName?: string;
+    strategicAccount?: string | null;
+  }): Promise<void>;
 }
+

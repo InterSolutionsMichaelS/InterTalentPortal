@@ -870,6 +870,89 @@ export class AzureSqlDatabase implements IDatabase {
     }
   }
 
+  async insertTalentRequest(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    notes: string;
+    location?: string;
+    personId?: string;
+    associateId?: string;
+    associateName?: string;
+    startDate?: string;
+    startTime?: string;
+    endTime?: string;
+    requestMode?: string;
+    campaign?: string;
+    customerName?: string;
+    strategicAccount?: string | null;
+  }): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool.request()
+      .input('name', sql.NVarChar(200), data.name)
+      .input('email', sql.NVarChar(255), data.email)
+      .input('phone', sql.NVarChar(25), data.phone ?? null)
+      .input('notes', sql.NVarChar(sql.MAX), data.notes)
+      .input('location', sql.NVarChar(100), data.location ?? null)
+
+      // ✅ FIXED: bigint instead of string
+      .input('personId', sql.BigInt, data.personId ? Number(data.personId) : null)
+
+      .input('associateId', sql.NVarChar(50), data.associateId ?? null)
+      .input('associateName', sql.NVarChar(100), data.associateName ?? null)
+
+      .input('startDate', sql.Date, data.startDate ?? null)
+      .input('startTime', sql.NVarChar(20), data.startTime ?? null)
+      .input('endTime', sql.NVarChar(20), data.endTime ?? null)
+
+      .input('requestMode', sql.NVarChar(50), data.requestMode ?? null)
+      .input('campaign', sql.NVarChar(100), data.campaign ?? null)
+
+      // ✅ matches DB exactly (nvarchar(200))
+      .input('customerName', sql.NVarChar(200), data.customerName ?? null)
+
+      .input('strategicAccount', sql.NVarChar(100), data.strategicAccount ?? null)
+
+      .query(`
+        INSERT INTO TalentRequests (
+          Name,
+          Email,
+          Phone,
+          Notes,
+          Location,
+          PersonId,
+          AssociateId,
+          AssociateName,
+          StartDate,
+          StartTime,
+          EndTime,
+          RequestMode,
+          Campaign,
+          CustomerName,
+          StrategicAccount,
+          CreatedAt
+        )
+        VALUES (
+          @name,
+          @email,
+          @phone,
+          @notes,
+          @location,
+          @personId,
+          @associateId,
+          @associateName,
+          @startDate,
+          @startTime,
+          @endTime,
+          @requestMode,
+          @campaign,
+          @customerName,
+          @strategicAccount,
+          GETDATE()
+        )
+      `);
+  }
   /**
    * Get office email by location
    * For Azure SQL, we use the Office column from the main table to map to emails

@@ -65,6 +65,7 @@ useEffect(() => {
               ? 'UNAVAILABLE'
               : 'GENERIC'
           }
+          customerName={searchParams.get('customerName') ?? undefined}
         />
       )}
     </>

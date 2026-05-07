@@ -1,7 +1,7 @@
 'use client';
 
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 
@@ -20,9 +20,12 @@ interface RequestTalentModalProps {
   contactEmail?: string;
   contactPhone?: string;
   personId?: string;
+  //added customerName string for reporting talent tuesday / strategic accounts 4/30/26 
+  customerName?: string;
 }
 
 //added logic for contact name email and phone to be pulled through. 1/27/26 MS
+//added customerName string for reporting talent tuesday / strategic accounts 4/30/26 
 export default function RequestTalentModal({
   onClose,
   location,
@@ -33,7 +36,8 @@ export default function RequestTalentModal({
   requestMode,
   contactName,
   contactEmail,
-  contactPhone
+  contactPhone,
+  customerName
 }: RequestTalentModalProps) {
   // 🔑 Single source of truth for behavior
   const mode: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE' =
@@ -49,7 +53,12 @@ export default function RequestTalentModal({
     startTime: '',
     endTime: '',
   });
+  const searchParams = useSearchParams();
 
+  const customerNameFromUrl = searchParams.get('customerName');
+
+  const effectiveCustomerName =
+  customerNameFromUrl ?? customerName ?? null;
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
@@ -74,12 +83,14 @@ export default function RequestTalentModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  //testing for customerName coming through MS 4/30/26
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     setStatus('idle');
-
+    
     try {
       const res = await fetch('/api/request-talent', {
         method: 'POST',
@@ -96,6 +107,7 @@ export default function RequestTalentModal({
           personId: personId ?? null,
 
           location,
+          customerName: effectiveCustomerName,
         }),
       });
 
@@ -112,6 +124,7 @@ export default function RequestTalentModal({
       setIsSubmitting(false);
     }
   }
+  
   // added Start Time, End time and Start Date below on 3/5/26 Approved language as of 3/5 MS Approval through AW.
   // line 118 was : <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4"> updated on 3/17/26 MS 
   // line 119 was : <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-8 relative max-h-[90vh] overflow-y-auto"> udpated on 3/17/26 MS

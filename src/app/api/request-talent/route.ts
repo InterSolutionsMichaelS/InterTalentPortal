@@ -5,6 +5,28 @@ import {
 } from "@/lib/email/send-email";
 import { db } from "@/lib/db";
 
+
+    const STRATEGIC_ACCOUNT_SLUGS = [
+      { name: 'Avenue5 Residential', slug: 'avenue5' },
+      { name: 'Elmington Property Management', slug: 'elmington' },
+      { name: 'RPM Living', slug: 'rpm' },
+      { name: 'Asset Living', slug: 'assetliving' },
+      { name: 'Greystar', slug: 'greystar' },
+    ];
+
+    function getStrategicAccount(customerName?: string): string | null {
+      if (!customerName) return null;
+
+      const normalized = customerName.toLowerCase().replace(/\s+/g, '');
+
+      for (const account of STRATEGIC_ACCOUNT_SLUGS) {
+        if (normalized.includes(account.slug)) {
+          return account.name;
+        }
+      }
+
+      return null;
+    }
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -25,7 +47,10 @@ export async function POST(req: NextRequest) {
       associateId,
       associateName,
       campaign,
+      customerName,
     } = body || {};
+
+    console.log("API customerName:", customerName);
 
     // Base validation (applies to all modes)
     if (!name || !email || !notes) {
@@ -42,6 +67,27 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const strategicAccount = getStrategicAccount(customerName);
+
+
+    await db.insertTalentRequest({
+      name,
+      email,
+      phone,
+      notes,
+      location,
+      personId,
+      associateId,
+      associateName,
+      startDate,
+      startTime,
+      endTime,
+      requestMode,
+      campaign,
+      customerName, // 👈 THIS is what fixes your issue
+      strategicAccount,
+    });
 
     // Default recipient (used for GENERIC / UNAVAILABLE)
     let toEmail = "info@intersolutions.com";
