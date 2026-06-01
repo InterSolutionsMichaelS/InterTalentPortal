@@ -33,7 +33,7 @@ export interface ProfileCSVRow {
 }
 
 /**
- * Search/Filter Parameters
+ * Search/Filter Parameters  address line added on 5/28/26 to test searchable addresses
  */
 export interface ProfileSearchParams {
   query?: string; // Keyword search in professional summary

@@ -32,6 +32,7 @@ export interface ProfileSearchParams {
   professionTypes?: string[]; // Multiple professions for OR search (from hero OR sidebar)
   city?: string;
   state?: string;
+  address?: string;
   zipCode?: string;
   zipCodes?: string[]; // Multiple zip codes for OR search
   radius?: number; // Radius in miles for zip code search

@@ -227,7 +227,7 @@ export default function HeroSearch() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Zip, City or State"
+                  placeholder="Address, Zip, City or State"
                   value={location}
                   onChange={(e) => {
                     const sanitized = sanitizeLocation(e.target.value);

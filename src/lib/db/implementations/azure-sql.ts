@@ -13,7 +13,7 @@ import type {
   OfficeInfo,
   Profile,
 } from '../interface';
-import { getZipLocation, getCityLocation } from '../../geospatial';
+import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
 
 // Table names configurable via environment variables
 const PROFILE_TABLE = process.env.AZURE_SQL_PROFILE_TABLE || 'RayTestShowcase';
@@ -507,6 +507,7 @@ export class AzureSqlDatabase implements IDatabase {
       zipCode,
       zipCodes,
       radius,
+      address,
       office,
       page = 1,
       limit = 20,
@@ -568,7 +569,33 @@ export class AzureSqlDatabase implements IDatabase {
       // Geocode ALL zip codes to get center points
       const centers: Array<{ lat: number; lng: number; zipCode: string }> = [];
 
-      if (centerZipCodes.length > 0) {
+      console.log('ADDRESS PARAM RECEIVED:', address);
+
+      // Address-based search center added on 5/28/26 by MS for address searching 
+      if (address) {
+
+        console.log('Attempting address geocode...');
+
+        console.log(`Geocoding address: ${address}`);
+
+        const location = await getAddressLocation(address);
+
+        if (location) {
+          centers.push({
+            lat: location.lat,
+            lng: location.lng,
+            zipCode: address,
+          });
+
+          console.log(
+            `Address geocoded successfully: (${location.lat}, ${location.lng})`
+          );
+        } else {
+          console.warn(`Could not geocode address: ${address}`);
+        }
+      }
+
+      if (!address && centerZipCodes.length > 0) {
         console.log(
           `Geocoding ${centerZipCodes.length} zip code(s) for radius search...`
         );
@@ -591,7 +618,7 @@ export class AzureSqlDatabase implements IDatabase {
         console.log(
           `Successfully geocoded ${centers.length}/${centerZipCodes.length} zip codes`
         );
-      } else if (city) {
+      } else if (!address && city) {
         // Fallback to city if no zip codes provided
         const centerLocation = await getCityLocation(city, state);
         if (centerLocation) {
