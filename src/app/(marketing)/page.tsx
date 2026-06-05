@@ -189,7 +189,7 @@ export default async function Home({
                     {result.total === 1 ? 'candidate' : 'candidates'}
                   </>
                 ) : (
-                  'No candidates found'
+                  'The Search Continues...'
                 )}
               </p>
             </div>
@@ -217,14 +217,15 @@ export default async function Home({
             ) : (
               <InjectTalentModal>
                 <EmptyState
-                  title="No candidates available"
+                  title="It looks like our associates in your area are currently all booked!"
                   message={
                     hasFilters
-                      ? "It looks like all available talent in this area is currently assisting other properties. Try adjusting your filters, or submit a request and our team will contact you shortly."
+                      ? "The good news is we’re continuously onboarding new talent nearby. Submit a request below, and we’ll send you a selection of qualified associates who fit your property’s needs."
                       : "Submit a request and our team will contact you shortly."
                   }
-                  actionLabel="Clear all filters"
                   actionHref="/"
+                  actionLabel="Clear all filters"
+                  
                 />
               </InjectTalentModal>
             )}
