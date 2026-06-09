@@ -15,6 +15,7 @@ export default function SearchParamsSyncer() {
   const searchParams = useSearchParams();
 
   // Extract only setters (stable references)
+  const setAddress = useSearchStore((state) => state.setAddress);
   const setCity = useSearchStore((state) => state.setCity);
   const setState = useSearchStore((state) => state.setState);
   const setZipCode = useSearchStore((state) => state.setZipCode);
@@ -43,6 +44,7 @@ export default function SearchParamsSyncer() {
     // Only sync once on mount or when URL changes
 
     // Sync URL params to store
+    const address = searchParams.get('address') || '';
     const city = searchParams.get('city') || '';
     const state = searchParams.get('state') || '';
     const zip = searchParams.get('zip') || '';
@@ -92,9 +94,12 @@ export default function SearchParamsSyncer() {
 
 
     // Update store (these are stable functions)
-    setCity(city);
-    setState(state);
-    setZipCode(zip);
+    setAddress(address);
+
+    setCity(address ? '' : city);
+    setState(address ? '' : state);
+    setZipCode(address ? '' : zip);
+
     setOffice(officeParam);
 
     // Clear and rebuild keywords from URL
@@ -135,7 +140,10 @@ export default function SearchParamsSyncer() {
 
     // Reconstruct location string for hero search (marketing hero; client portal hero uses property/profession selects)
     let locationStr = '';
-    if (zip) {
+
+    if (address) {
+      locationStr = address;
+    } else if (zip) {
       locationStr = zip;
     } else if (city && state) {
       locationStr = `${city}, ${state}`;
@@ -153,6 +161,7 @@ export default function SearchParamsSyncer() {
 
     // Auto-scroll to results section if there are search filters
     const hasSearchFilters =
+      !!address ||
       !!keywordsParam ||
       !!zipCodesParam ||
       !!city ||

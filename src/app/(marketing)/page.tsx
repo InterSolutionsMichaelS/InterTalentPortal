@@ -35,6 +35,7 @@ function clean(value?: string): string | undefined {
 function buildSearchParams(params: {
   keywords?: string;
   zipCodes?: string;
+  address?: string;
   city?: string;
   state?: string;
   zipCode?: string;
@@ -48,6 +49,7 @@ function buildSearchParams(params: {
 
   if (params.keywords) searchParams.set('keywords', params.keywords);
   if (params.zipCodes) searchParams.set('zipCodes', params.zipCodes);
+  if (params.address) searchParams.set('address', params.address);
   if (params.city) searchParams.set('city', params.city);
   if (params.state) searchParams.set('state', params.state);
   if (params.zipCode) searchParams.set('zip', params.zipCode);
@@ -68,13 +70,20 @@ export default async function Home({
 }) {
   const params = await searchParams;
 
+  console.log('HOME PAGE PARAMS:', params);
+
   // Extract + normalize search parameters (EMPTY STRINGS => undefined)
   const keywordsRaw = typeof params.keywords === 'string' ? params.keywords : undefined;
   const zipCodesRaw = typeof params.zipCodes === 'string' ? params.zipCodes : undefined;
   const city = clean(typeof params.city === 'string' ? params.city : undefined);
   const state = clean(typeof params.state === 'string' ? params.state : undefined);
   const zipCode = clean(typeof params.zip === 'string' ? params.zip : undefined);
-
+  const address = clean(
+    typeof params.address === 'string'
+      ? params.address
+      : undefined
+  );
+  console.log('HOME PAGE ADDRESS:', address);
   const radius =
     typeof params.radius === 'string' && params.radius.trim() !== ''
       ? Number.parseInt(params.radius, 10)
@@ -106,6 +115,7 @@ export default async function Home({
   const hasFilters =
     (keywordsArray && keywordsArray.length > 0) ||
     (zipCodesArray && zipCodesArray.length > 0) ||
+    !!address ||
     !!city ||
     !!state ||
     !!zipCode ||
@@ -118,6 +128,7 @@ export default async function Home({
     ? await db.searchProfiles({
         keywords: keywordsArray,
         zipCodes: zipCodesArray,
+        address,
         city,
         state,
         zipCode,
@@ -135,6 +146,7 @@ export default async function Home({
   const searchKey = JSON.stringify({
     keywords: keywordsArray?.join(',') ?? '',
     zipCodes: zipCodesArray?.join(',') ?? '',
+    address: address ?? '',
     city: city ?? '',
     state: state ?? '',
     zipCode: zipCode ?? '',
@@ -204,6 +216,7 @@ export default async function Home({
                 searchParams={buildSearchParams({
                   keywords: keywordsArray?.join(','),
                   zipCodes: zipCodesArray?.join(','),
+                  address,
                   city,
                   state,
                   zipCode,

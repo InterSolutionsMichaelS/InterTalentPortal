@@ -515,6 +515,13 @@ export class AzureSqlDatabase implements IDatabase {
       sortDirection = 'asc',
     } = params;
 
+    const effectiveRadius =
+      radius && radius > 0
+        ? radius
+        : address
+          ? 15
+          : undefined;
+
     const activeCondition = this.getActiveCondition();
     const conditions: string[] = [activeCondition];
     const request = pool.request();
@@ -552,10 +559,14 @@ export class AzureSqlDatabase implements IDatabase {
       conditions.push('Office = @office');
     }
 
+    console.log(
+      `Using effective radius: ${effectiveRadius} miles`
+    );
+
     // ═══════════════════════════════════════════════════════════════
     // RADIUS SEARCH - Uses Azure SQL GEOGRAPHY for fast spatial queries
     // ═══════════════════════════════════════════════════════════════
-    if (radius && radius > 0) {
+    if (effectiveRadius) {
       const hasGeoSupport = await this.checkGeoLocationSupport();
 
       // Collect center zip codes
@@ -573,11 +584,7 @@ export class AzureSqlDatabase implements IDatabase {
 
       // Address-based search center added on 5/28/26 by MS for address searching 
       if (address) {
-
-        console.log('Attempting address geocode...');
-
-        console.log(`Geocoding address: ${address}`);
-
+        
         const location = await getAddressLocation(address);
 
         if (location) {
@@ -591,7 +598,23 @@ export class AzureSqlDatabase implements IDatabase {
             `Address geocoded successfully: (${location.lat}, ${location.lng})`
           );
         } else {
-          console.warn(`Could not geocode address: ${address}`);
+          console.log('Address geocode failed. Trying city lookup...');
+
+          const cityLocation = await getCityLocation(address, state);
+
+          if (cityLocation) {
+            centers.push({
+              lat: cityLocation.lat,
+              lng: cityLocation.lng,
+              zipCode: address,
+            });
+
+            console.log(
+              `City geocoded successfully: (${cityLocation.lat}, ${cityLocation.lng})`
+            );
+          } else {
+            console.warn(`Could not geocode address or city: ${address}`);
+          }
         }
       }
 
@@ -667,7 +690,7 @@ export class AzureSqlDatabase implements IDatabase {
         if (centers.length > 1) {
           return this.multiCenterSpatialRadiusSearch(
             centers,
-            radius,
+            effectiveRadius,
             spatialConditions,
             page,
             limit,
@@ -679,7 +702,7 @@ export class AzureSqlDatabase implements IDatabase {
           return this.spatialRadiusSearch(
             centers[0].lat,
             centers[0].lng,
-            radius,
+            effectiveRadius,
             spatialConditions,
             page,
             limit,
