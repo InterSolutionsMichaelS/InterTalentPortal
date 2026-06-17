@@ -199,6 +199,34 @@ interface TalentRequestEmailParams {
   endTime?: string;
 }
 
+interface StaffingRequestEmailParams {
+  toEmail: string;
+
+  officeName: string;
+
+  managementCompany: string;
+  propertyName: string;
+
+  streetAddress: string;
+  city: string;
+  state: string;
+
+  positionType: string;
+  positionTitle: string;
+  duties: string;
+
+  startDate?: string;
+  schedule?: string;
+
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email: string;
+
+  contactMethod?: string;
+  bestTimeToRespond?: string;
+}
+
 /**
  * Send "Request Talent" email (No candidates found)
  * Always goes to InterTalent@intersolutions.com
@@ -265,6 +293,165 @@ export async function sendTalentRequestEmail(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error"
+    };
+  }
+}
+
+export async function sendStaffingRequestEmail(
+  params: StaffingRequestEmailParams
+): Promise<{ success: boolean; error?: string }> {
+
+  const {
+    toEmail,
+    officeName,
+
+    managementCompany,
+    propertyName,
+
+    streetAddress,
+    city,
+    state,
+
+    positionType,
+    positionTitle,
+    duties,
+
+    startDate,
+    schedule,
+
+    firstName,
+    lastName,
+    phone,
+    email,
+
+    contactMethod,
+    bestTimeToRespond,
+  } = params;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto;">
+
+      <h2 style="color:#0077B5;">
+        New Staffing Request
+      </h2>
+
+      <p>
+        A staffing request has been submitted through InterTalent.
+      </p>
+
+      <h3>Office Routing</h3>
+
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td><strong>Office:</strong></td>
+          <td>${officeName}</td>
+        </tr>
+      </table>
+
+      <h3>Property Information</h3>
+
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td><strong>Management Company:</strong></td>
+          <td>${managementCompany}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Property Name:</strong></td>
+          <td>${propertyName}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Address:</strong></td>
+          <td>
+            ${streetAddress}<br/>
+            ${city}, ${state}
+          </td>
+        </tr>
+      </table>
+
+      <h3>Position Information</h3>
+
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td><strong>Position Type:</strong></td>
+          <td>${positionType}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Position Title:</strong></td>
+          <td>${positionTitle}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Start Date:</strong></td>
+          <td>${startDate ?? "Not specified"}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Schedule:</strong></td>
+          <td>${schedule ?? "Not specified"}</td>
+        </tr>
+      </table>
+
+      <h3>Duties & Responsibilities</h3>
+
+      <div style="background:#f5f5f5;padding:15px;border-left:4px solid #0077B5;">
+        ${duties.replace(/\n/g, "<br>")}
+      </div>
+
+      <h3>Contact Information</h3>
+
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td><strong>Name:</strong></td>
+          <td>${firstName} ${lastName}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Email:</strong></td>
+          <td>${email}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Phone:</strong></td>
+          <td>${phone ?? "Not provided"}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Preferred Contact:</strong></td>
+          <td>${contactMethod ?? "Not specified"}</td>
+        </tr>
+
+        <tr>
+          <td><strong>Best Time:</strong></td>
+          <td>${bestTimeToRespond ?? "Not specified"}</td>
+        </tr>
+      </table>
+
+    </div>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: toEmail,
+      cc: "InterTalent@intersolutions.com",
+      replyTo: email,
+      subject: `New Staffing Request - ${officeName}`,
+      html,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send staffing request email:", error);
+
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
     };
   }
 }

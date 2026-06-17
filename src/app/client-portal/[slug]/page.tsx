@@ -1,5 +1,6 @@
 import ClientPortalHero from '@/components/client-portal/ClientPortalHero';
 import ClientPortalContactCard from '@/components/client-portal/ClientPortalContactCard';
+import AdsPanel from '@/components/AdsPanel/AdsPanel';
 import ClientPortalBlueBanner from '@/components/client-portal/ClientPortalBlueBanner';
 import ClientPortalSearchFilters from '@/components/client-portal/ClientPortalSearchFilters';
 import ClientPortalProfileResults from '@/components/client-portal/ClientPortalProfileResults';
@@ -9,6 +10,7 @@ import SearchParamsSyncer from '@/components/search/SearchParamsSyncer';
 import ClientPortalScrollToTop from '@/components/client-portal/ClientPortalScrollToTop';
 import LoadingManager from '@/components/ui/LoadingManager';
 import ClientPortalInjectTalentModal from '@/components/client-portal/ClientPortalInjectTalentModal';
+import StaffingRequestBanner from '@/components/client-portal/StaffingRequestBanner';
 import { db } from '@/lib/db';
 
 // 🔒 Force this page to always fetch fresh data (server-rendered)
@@ -192,6 +194,10 @@ export default async function ClientPortalPage({
               />
             </div>
 
+            {result.profiles.length > 0 && (
+              <StaffingRequestBanner />
+            )}
+
             {/* Profile Cards or Empty State */}
             {result.profiles.length > 0 ? (
               <ClientPortalProfileResults
@@ -228,9 +234,15 @@ export default async function ClientPortalPage({
             )}
           </div>
 
-          {/* Contacts Sidebar */}
+          {/* Ads Panel Sidebar */}
           <aside className="lg:w-72 shrink-0">
-            <ClientPortalContactCard />
+            <div className="space-y-6 sticky top -6">
+
+              <ClientPortalContactCard />
+
+              <AdsPanel />
+
+            </div>
           </aside>
         </div>
       </section>

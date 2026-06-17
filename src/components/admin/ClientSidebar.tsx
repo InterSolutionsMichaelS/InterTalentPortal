@@ -261,6 +261,12 @@ export function ClientSidebar({
         >
           👥 Support Team
         </Link>
+        <Link
+          href="/admin/ads"
+          className="hover:underline"
+        >
+          📢 Ad Management
+        </Link>
         {isSuperAdmin ? (
           <Link href="/admin/users" className="hover:underline">
             👤 Admin Users

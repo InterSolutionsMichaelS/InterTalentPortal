@@ -1,5 +1,6 @@
 import HeroSearch from '@/components/home/HeroSearch';
 import BlueBanner from '@/components/home/BlueBanner';
+import AdsPanel from '@/components/AdsPanel/AdsPanel';
 import SearchFilters from '@/components/search/SearchFilters';
 import ProfileResults from '@/components/search/ProfileResults';
 import EmptyState from '@/components/ui/EmptyState';
@@ -243,6 +244,12 @@ export default async function Home({
               </InjectTalentModal>
             )}
           </div>
+
+          <aside className="lg:w-72 shrink-0">
+            <div className="sticky top-6">
+              <AdsPanel />
+            </div>
+          </aside>
         </div>
       </section>
 

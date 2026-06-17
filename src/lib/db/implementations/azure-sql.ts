@@ -5,16 +5,12 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type {
-  IDatabase,
-  ProfileSearchParams,
-  PaginatedProfiles,
-  StateInfo,
-  OfficeInfo,
-  Profile,
-} from '../interface';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, } from '../interface';
+import type { Ad } from '@/types/ad';
 import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
 
+const ADS_TABLE =
+  process.env.AZURE_SQL_ADS_TABLE || 'dbo.Ads';
 // Table names configurable via environment variables
 const PROFILE_TABLE = process.env.AZURE_SQL_PROFILE_TABLE || 'RayTestShowcase';
 const LOCATION_EMAIL_TABLE =
@@ -829,6 +825,430 @@ export class AzureSqlDatabase implements IDatabase {
       city: row.city as string,
       state: row.state as string,
     }));
+  }
+
+  async getOfficeRoutingData() {
+    const pool = await this.getConnection();
+
+    const result = await pool.request().query(`
+      SELECT
+        Id,
+        OfficeName,
+        Division,
+        Region,
+        NotificationEmails,
+        ZipCode,
+        Latitude,
+        Longitude,
+        RadiusMiles,
+        IsActive
+      FROM Offices
+      WHERE IsActive = 1
+    `);
+
+    return result.recordset;
+  }
+
+  async getCachedLocationSuggestions(
+    query: string
+  ): Promise<LocationSuggestion[]> {
+    const pool = await this.getConnection();
+
+    const searchTerm = `%${query}%`;
+
+    const result = await pool
+      .request()
+      .input('query', sql.NVarChar(100), searchTerm)
+      .query(`
+        SELECT TOP 10
+          label,
+          value,
+          type
+        FROM LocationSuggestionCache
+        WHERE query LIKE @query
+          OR label LIKE @query
+        ORDER BY created_at DESC
+      `);
+
+    return result.recordset.map(
+      (row: Record<string, unknown>) => ({
+        label: String(row.label),
+        value: String(row.value),
+        type: row.type as
+          | 'address'
+          | 'city'
+          | 'state'
+          | 'zipcode',
+      })
+    );
+  };
+  
+
+  async saveLocationSuggestions(
+    query: string,
+    suggestions: LocationSuggestion[]
+  ): Promise<void> { 
+    const pool = await this.getConnection();
+
+    for (const suggestion of suggestions) {
+      await pool
+        .request()
+        .input('query', sql.NVarChar(100), query)
+        .input('label', sql.NVarChar(500), suggestion.label)
+        .input('value', sql.NVarChar(500), suggestion.value)
+        .input('type', sql.NVarChar(50), suggestion.type)
+        .query(`
+          INSERT INTO LocationSuggestionCache
+          (
+            query,
+            label,
+            value,
+            type
+          )
+          VALUES
+          (
+            @query,
+            @label,
+            @value,
+            @type
+          )
+        `);
+    }
+  }
+
+
+  async createStaffingRequest(data: {
+    officeId: number;
+    officeName: string;
+    officeEmail: string;
+
+    managementCompany?: string;
+    propertyName?: string;
+    streetAddress?: string;
+    city?: string;
+    state?: string;
+
+    positionType?: string;
+    positionTitle?: string;
+    duties?: string;
+    startDate?: string;
+    schedule?: string;
+
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+
+    contactMethod?: string;
+    bestTimeToRespond?: string;
+  }): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool.request()
+      .input('officeId', sql.Int, data.officeId)
+      .input('officeName', sql.NVarChar(100), data.officeName)
+      .input('officeEmail', sql.NVarChar(255), data.officeEmail)
+
+      .input('managementCompany', sql.NVarChar(255), data.managementCompany ?? null)
+      .input('propertyName', sql.NVarChar(255), data.propertyName ?? null)
+      .input('streetAddress', sql.NVarChar(255), data.streetAddress ?? null)
+      .input('city', sql.NVarChar(100), data.city ?? null)
+      .input('state', sql.NVarChar(10), data.state ?? null)
+
+      .input('positionType', sql.NVarChar(100), data.positionType ?? null)
+      .input('positionTitle', sql.NVarChar(255), data.positionTitle ?? null)
+      .input('duties', sql.NVarChar(sql.MAX), data.duties ?? null)
+      .input('startDate', sql.Date, data.startDate || null)
+      .input('schedule', sql.NVarChar(sql.MAX), data.schedule ?? null)
+
+      .input('firstName', sql.NVarChar(100), data.firstName ?? null)
+      .input('lastName', sql.NVarChar(100), data.lastName ?? null)
+      .input('phone', sql.NVarChar(50), data.phone ?? null)
+      .input('email', sql.NVarChar(255), data.email ?? null)
+
+      .input('contactMethod', sql.NVarChar(20), data.contactMethod ?? null)
+      .input('bestTimeToRespond', sql.NVarChar(100), data.bestTimeToRespond ?? null)
+
+      .query(`
+        INSERT INTO StaffingRequests (
+          SubmittedAt,
+          OfficeId,
+          OfficeName,
+          OfficeEmail,
+          ManagementCompany,
+          PropertyName,
+          StreetAddress,
+          City,
+          State,
+          PositionType,
+          PositionTitle,
+          Duties,
+          StartDate,
+          Schedule,
+          FirstName,
+          LastName,
+          Phone,
+          Email,
+          ContactMethod,
+          BestTimeToRespond
+        )
+        VALUES (
+          GETDATE(),
+          @officeId,
+          @officeName,
+          @officeEmail,
+          @managementCompany,
+          @propertyName,
+          @streetAddress,
+          @city,
+          @state,
+          @positionType,
+          @positionTitle,
+          @duties,
+          @startDate,
+          @schedule,
+          @firstName,
+          @lastName,
+          @phone,
+          @email,
+          @contactMethod,
+          @bestTimeToRespond
+        )
+      `);
+  }
+
+  async getClients(): Promise<string[]> {
+    const pool = await this.getConnection();
+
+    const result = await pool.request().query(`
+      SELECT slug
+      FROM clients
+      ORDER BY slug
+    `);
+
+    return result.recordset.map(
+      (row: Record<string, unknown>) =>
+        row.slug as string
+    );
+  }
+
+  async getAds(): Promise<Ad[]> {
+    const pool = await this.getConnection();
+
+    const result = await pool.request().query(`
+      SELECT
+        Id,
+        Title,
+        ImageData,
+        ImageMimeType,
+        DestinationUrl,
+        IsActive,
+        DisplayOrder,
+        TargetAccounts
+      FROM ${ADS_TABLE}
+      ORDER BY DisplayOrder ASC
+    `);
+
+    return result.recordset.map((row) => {
+      const imageUrl =
+        row.ImageData && row.ImageMimeType
+          ? `data:${row.ImageMimeType};base64,${Buffer.from(row.ImageData).toString('base64')}`
+          : '';
+
+      return {
+        id: row.Id,
+        title: row.Title,
+        imageUrl,
+        destinationUrl: row.DestinationUrl,
+        isActive: row.IsActive,
+        displayOrder: row.DisplayOrder,
+        targetAccounts: row.TargetAccounts
+          ? JSON.parse(row.TargetAccounts)
+          : [],
+      };
+    });
+  }
+
+  async createAd(data: {
+    title: string;
+    imageData: number[];
+    imageMimeType: string;
+    destinationUrl: string;
+    displayOrder: number;
+    isActive: boolean;
+    targetAccounts: string[];
+  }): Promise<void> {
+
+    const pool = await this.getConnection();
+
+    const buffer = Buffer.from(data.imageData);
+
+    await pool
+      .request()
+      .input('title', sql.NVarChar(200), data.title)
+      .input('imageData', sql.VarBinary(sql.MAX), buffer)
+      .input('imageMimeType', sql.NVarChar(50), data.imageMimeType)
+      .input('destinationUrl', sql.NVarChar(500), data.destinationUrl)
+      .input('displayOrder', sql.Int, data.displayOrder)
+      .input('isActive', sql.Bit, data.isActive)
+      .input(
+        'targetAccounts',
+        sql.NVarChar(sql.MAX),
+        JSON.stringify(data.targetAccounts)
+      )
+      .query(`
+        INSERT INTO ${ADS_TABLE}
+        (
+          Title,
+          ImageData,
+          ImageMimeType,
+          DestinationUrl,
+          DisplayOrder,
+          IsActive,
+          TargetAccounts
+        )
+        VALUES
+        (
+          @title,
+          @imageData,
+          @imageMimeType,
+          @destinationUrl,
+          @displayOrder,
+          @isActive,
+          @targetAccounts
+        )
+      `);
+  }
+
+  async deleteAd(id: number): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool
+      .request()
+      .input('id', sql.Int, id)
+      .query(`
+        DELETE FROM ${ADS_TABLE}
+        WHERE Id = @id
+      `);
+  }
+
+  async updateAd(
+    id: number,
+    data: Partial<{
+      title: string;
+      imageData: number[];
+      imageMimeType: string;
+      destinationUrl: string;
+      displayOrder: number;
+      isActive: boolean;
+      targetAccounts: string[];
+    }>
+  ): Promise<void> {
+    const pool = await this.getConnection();
+
+    const request = pool.request().input('id', sql.Int, id);
+    const updates: string[] = [];
+
+    if (data.title !== undefined) {
+      updates.push('Title = @title');
+      request.input('title', sql.NVarChar(200), data.title);
+    }
+
+    if (data.destinationUrl !== undefined) {
+      updates.push('DestinationUrl = @destinationUrl');
+      request.input('destinationUrl', sql.NVarChar(500), data.destinationUrl);
+    }
+
+    if (data.displayOrder !== undefined) {
+      updates.push('DisplayOrder = @displayOrder');
+      request.input('displayOrder', sql.Int, data.displayOrder);
+    }
+
+    if (data.isActive !== undefined) {
+      updates.push('IsActive = @isActive');
+      request.input('isActive', sql.Bit, data.isActive);
+    }
+
+    if (data.targetAccounts !== undefined) {
+      updates.push('TargetAccounts = @targetAccounts');
+      request.input(
+        'targetAccounts',
+        sql.NVarChar(sql.MAX),
+        JSON.stringify(data.targetAccounts)
+      );
+    }
+
+    if (data.imageData !== undefined && data.imageMimeType !== undefined) {
+      updates.push('ImageData = @imageData');
+      updates.push('ImageMimeType = @imageMimeType');
+
+      request.input(
+        'imageData',
+        sql.VarBinary(sql.MAX),
+        Buffer.from(data.imageData)
+      );
+
+      request.input(
+        'imageMimeType',
+        sql.NVarChar(50),
+        data.imageMimeType
+      );
+    }
+
+    if (updates.length === 0) return;
+
+    await request.query(`
+      UPDATE ${ADS_TABLE}
+      SET ${updates.join(', ')}
+      WHERE Id = @id
+    `);
+  }
+
+  async getLocationSuggestion(
+    query: string
+  ): Promise<LocationSuggestion[]> {
+    const pool = await this.getConnection();
+
+    const searchTerm = `%${query}%`;
+
+    console.log('Suggestion query:', query);
+
+    const result = await pool
+      .request()
+      .input('query', sql.NVarChar(100), searchTerm)
+      .query(`
+        SELECT DISTINCT TOP 10
+          Address,
+          City,
+          State,
+          ZipCode
+        FROM ${PROFILE_TABLE}
+        WHERE Address IS NOT NULL
+          AND City IS NOT NULL
+          AND State IS NOT NULL
+          AND ZipCode IS NOT NULL
+          AND LTRIM(RTRIM(City)) <> ''
+          AND LTRIM(RTRIM(State)) <> ''
+          AND ( Address LIKE @query
+            OR City LIKE @query
+            OR State LIKE @query
+            OR ZipCode LIKE @query
+          )
+        ORDER BY Address, City, State
+      `);
+
+    return result.recordset.map((row: Record<string, unknown>) => {
+      const address = String(row.Address ?? '').trim();
+      const city = String(row.City ?? '').trim();
+      const state = String(row.State ?? '').trim();
+      const zipCode = String(row.ZipCode ?? '').trim();
+
+      return {
+        label: `${address}, ${city}, ${state} ${zipCode}`,
+        value: `${address} ${city} ${state} ${zipCode}`,
+        type: 'address' as const,
+      };
+    });
   }
 
   async insertProfiles(profiles: Profile[]): Promise<void> {
