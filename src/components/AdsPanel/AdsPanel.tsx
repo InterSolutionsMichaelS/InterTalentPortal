@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import type { Ad } from '@/types/ad';
+import { trackEvent } from '@/lib/analytics/trackEvent';
 
+type AdsPanelProps = {
+  targetAccount: string;
+};
 
-export default function AdsPanel() {
+export default function AdsPanel({
+  targetAccount,
+}: AdsPanelProps) {
   const [current, setCurrent] = useState(0);
   const [ads, setAds] = useState<Ad[]>([]);
 
@@ -24,17 +30,34 @@ export default function AdsPanel() {
 
   const loadAds = async () => {
     try {
-        const response = await fetch('/api/admin/ads');
+      const response = await fetch('/api/admin/ads');
 
-        if (!response.ok) {
+      if (!response.ok) {
         throw new Error('Failed to load ads');
-        }
+      }
 
-        const data = await response.json();
+      const data = await response.json();
 
-        setAds(data);
+      console.log('TARGET ACCOUNT:', targetAccount);
+      console.log('ADS FROM API:', data);
+
+      const filteredAds = data.filter((ad: Ad) => {
+        const targets = (ad.targetAccounts ?? []).map(
+          (x: string) => x.toLowerCase()
+        );
+
+        return (
+          targets.includes('all') ||
+          targets.includes(targetAccount.toLowerCase())
+        );
+      });
+
+      console.log('FILTERED ADS:', filteredAds);
+
+      setAds(filteredAds);
+      setCurrent(0);
     } catch (error) {
-        console.error(error);
+      console.error(error);
     }
   };
 
@@ -46,14 +69,30 @@ export default function AdsPanel() {
 
   return (
     <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <a href={ad.destinationUrl}>
+      <a
+        href={ad.destinationUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => {
+          trackEvent({
+            eventType: 'ad_click',
+            page: 'Home',
+            component: 'AdsPanel',
+            value: String(ad.id),
+            metadata: {
+              title: ad.title,
+              destinationUrl: ad.destinationUrl,
+              displayOrder: ad.displayOrder,
+            },
+          });
+        }}
+      >
         <img
           src={ad.imageUrl}
           alt={ad.title}
-          className="w-full h-auto object-cover"
+          className="h-auto w-full object-cover"
         />
       </a>
-
-    </div>  
+    </div>
   );
 }

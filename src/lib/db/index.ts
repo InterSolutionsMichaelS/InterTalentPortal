@@ -34,4 +34,5 @@ export type {
   StateInfo,
   OfficeInfo,
   LocationEmailResult,
+  AnalyticsEvent,
 } from './interface';

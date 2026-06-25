@@ -3,6 +3,7 @@
 //Created for the Request Talent Modal on 12/12/25 by MS 
 import { useEffect, useState } from 'react';
 import RequestTalentModal from '@/components/modals/RequestTalentModal';
+import { trackEvent } from '@/lib/analytics/trackEvent';
 
 interface InjectTalentModalProps {
   children: React.ReactNode;
@@ -33,7 +34,18 @@ export default function InjectTalentModal({ children, location, }: InjectTalentM
       {/* New Request Talent button under it */}
       <div className="text-center mt-1">
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            console.log('talent_request_open fired');
+
+            trackEvent({
+              eventType: 'talent_request_open',
+              page: 'ClientPortal',
+              component: 'InjectTalentModal',
+              value: location ?? 'unknown',
+            });
+
+            setOpen(true);
+          }}
           className="inline-block bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white px-6 py-3 rounded-md font-semibold transition"
         >
           Request Talent

@@ -152,12 +152,9 @@ export default function SearchParamsSyncer() {
     } else if (state) {
       locationStr = state;
     }
-
-    if (locationStr) {
-      setLocation(locationStr);
-    } else {
-      setLocation('');
-    }
+    
+    setLocation('');
+    
 
     // Auto-scroll to results section if there are search filters
     const hasSearchFilters =

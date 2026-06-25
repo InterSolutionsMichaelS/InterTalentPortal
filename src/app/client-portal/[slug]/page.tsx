@@ -72,7 +72,7 @@ export default async function ClientPortalPage({
   params,
   searchParams,
 }: ClientPortalPageProps) {
-  await params;
+  const { slug } = await params;
 
   const sp = await searchParams;
 
@@ -240,7 +240,7 @@ export default async function ClientPortalPage({
 
               <ClientPortalContactCard />
 
-              <AdsPanel />
+              <AdsPanel targetAccount={slug} />
 
             </div>
           </aside>

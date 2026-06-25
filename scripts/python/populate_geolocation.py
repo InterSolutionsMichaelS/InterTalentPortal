@@ -43,12 +43,12 @@ def _env_db(*keys: str, default: str = '') -> str:
             return v
     return default
 
-
+# 'DB_SERVER','DB_NAME', 'DB_USER', 'DB_PASSWORD', , 'AZURE_SQL_PASSWORD' , 'AZURE_SQL_USER' 'AZURE_SQL_DATABASE', , 'AZURE_SQL_SERVER', 
 CONFIG = {
-    'server': _env_db('DB_SERVER', 'INTERTALENT_SQL_SERVER', 'AZURE_SQL_SERVER', default='ipsql2025.database.windows.net'),
-    'database': _env_db('DB_NAME', 'INTERTALENT_SQL_DATABASE', 'AZURE_SQL_DATABASE', default='intertalent_DB'),
-    'username': _env_db('DB_USER', 'INTERTALENT_SQL_USER', 'AZURE_SQL_USER'),
-    'password': _env_db('DB_PASSWORD', 'INTERTALENT_SQL_PASSWORD', 'AZURE_SQL_PASSWORD'),
+    'server': _env_db( 'INTERTALENT_SQL_SERVER', default='ipsql2025.database.windows.net'),
+    'database': _env_db( 'INTERTALENT_SQL_DATABASE', default='intertalent_DB'),
+    'username': _env_db( 'INTERTALENT_SQL_USER'),
+    'password': _env_db( 'INTERTALENT_SQL_PASSWORD'),
     'table_name': 'RayTestShowcase',  # Change to your table name
     'cache_file': 'zip_coordinates_cache.json',
     'api_delay': 0.1,  # Seconds between API calls (rate limiting)

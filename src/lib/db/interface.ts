@@ -78,6 +78,16 @@ export interface LocationEmailResult {
   email: string;
   isDefault: boolean;
 }
+/**
+ * Analytics to SQL 
+ */
+export interface AnalyticsEvent {
+  eventType: string;
+  page: string;
+  component: string;
+  value?: string;
+  metadata?: Record<string, unknown>;
+}
 
 /**
  * Location suggestions
@@ -180,6 +190,7 @@ export interface IDatabase {
     startDate?: string;
     schedule?: string;
 
+    contactTitle?: string;
     firstName?: string;
     lastName?: string;
     phone?: string;
@@ -189,6 +200,10 @@ export interface IDatabase {
     bestTimeToRespond?: string;
   }): Promise<void>;
 
+  // Analytics
+  insertAnalyticsEvent(
+    event: AnalyticsEvent
+  ): Promise<void>;
 
   // Profile mutations (for sync service)
   insertProfiles(profiles: Profile[]): Promise<void>;

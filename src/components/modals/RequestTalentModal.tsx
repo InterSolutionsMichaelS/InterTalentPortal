@@ -3,6 +3,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { trackEvent} from '@/lib/analytics/trackEvent';
 
 
 
@@ -112,6 +113,19 @@ export default function RequestTalentModal({
       });
 
       if (!res.ok) throw new Error('Request failed');
+
+      trackEvent({
+        eventType: 'talent_request_submit',
+        page: 'Home',
+        component: 'RequestTalentModal',
+        value: associateId ?? 'generic',
+        metadata: {
+          mode,
+          associateName,
+          location,
+          campaign,
+        },
+      });
 
       setStatus('success');
       setTimeout(() => {

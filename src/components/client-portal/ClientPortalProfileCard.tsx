@@ -5,6 +5,7 @@ import type { Profile } from '@/lib/db';
 import { useSearchStore } from '@/store/searchStore';
 import ClientPortalRequestTalentModal from '@/components/client-portal/ClientPortalRequestTalentModal';
 import { highlightKeywords } from '@/utils/highlightText';
+import { trackEvent } from '@/lib/analytics/trackEvent';
 
 interface ClientPortalProfileCardProps {
   profile: Profile;
@@ -115,8 +116,24 @@ export default function ClientPortalProfileCard({
 
               {/* Request Associate Button */}
               <button
-                onClick={() => setIsRequestModalOpen(true)}
-                className="px-5 py-2.5 bg-[var(--color-primary)] hover:opacity-90 text-white rounded-lg font-semibold text-sm transition-opacity whitespace-nowrap w-full md:w-auto"
+                onClick={() => {
+
+                  trackEvent({
+                    eventType: 'associate_request_open',
+                    page: 'Profiles',
+                    component: 'ProfileCard',
+                    value: profile.id,
+                    metadata: {
+                      associateName: `${profile.first_name} ${profile.last_initial}`,
+                      profession: profile.profession_type,
+                      city: profile.city,
+                      state: profile.state,
+                    },
+                  });
+
+                  setIsRequestModalOpen(true);
+                }}
+                className="px-5 py-2.5 bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white rounded-lg font-semibold text-sm transition-colors whitespace-nowrap w-full md:w-auto"
               >
                 Request Associate
               </button>
@@ -174,7 +191,25 @@ export default function ClientPortalProfileCard({
 
           {/* Read More/Less Button */}
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+
+              if (!isExpanded) {
+                trackEvent({
+                  eventType: 'profile_view',
+                  page: 'Home',
+                  component: 'ProfileCard',
+                  value: profile.id,
+                  metadata: {
+                    profession: profile.profession_type,
+                    office: profile.office,
+                    city: profile.city,
+                    state: profile.state,
+                  },
+                });
+              }
+
+              setIsExpanded(!isExpanded);
+            }}
             className="text-[var(--color-primary)] hover:opacity-90 font-medium text-sm inline-flex items-center gap-1 transition-opacity"
           >
             {isExpanded ? (

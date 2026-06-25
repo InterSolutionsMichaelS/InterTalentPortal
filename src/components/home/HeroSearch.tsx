@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchStore } from '@/store/searchStore';
 import type { LocationSuggestion } from '@/lib/db/interface';
+import { trackEvent } from '@/lib/analytics/trackEvent';
+
+
+
 
 // Constants for validation
 const MAX_LOCATION_LENGTH = 50;
@@ -103,18 +107,11 @@ export default function HeroSearch() {
       // If location was a zip code, add it to zipCodes array for tag display
       if (currentZipCode) {
         addZipCode(currentZipCode);
-        // Clear the legacy single zipCode field to avoid conflicts
         setZipCode('');
-        // Clear the location input since zip code becomes a tag
-        setLocation('');
-      } else if (currentCity || currentState) {
-        // If it's a city or state, keep it displayed in the input
-        // Don't clear it because it doesn't appear as a tag
-        // User should see what they searched for
-      } else {
-        // If nothing was parsed, clear the input
-        setLocation('');
       }
+
+      setLocation('');
+      setSuggestions([]);
 
       // Build query params from store
       const params = buildQueryParams();
@@ -123,6 +120,19 @@ export default function HeroSearch() {
       // Only show loading and navigate if the search is actually different
       const currentSearch = window.location.search.substring(1);
       if (newSearch !== currentSearch) {
+
+        trackEvent({
+          eventType: 'search',
+          page: 'Home',
+          component: 'HeroSearch',
+          value: trimmedLocation,
+          metadata: {
+            profession: selectedProfession || null,
+            searchQuery: newSearch,
+            hasLocation: !!trimmedLocation,
+          },
+        });
+
         setIsLoading(true);
         router.push(`/?${newSearch}`);
       }

@@ -2,6 +2,7 @@
 
 
 import { useState, useEffect } from 'react';
+import { trackEvent } from '@/lib/analytics/trackEvent';
 
 
 
@@ -97,6 +98,19 @@ export default function ClientPortalRequestTalentModal({
       });
 
       if (!res.ok) throw new Error('Request failed');
+
+      trackEvent({
+        eventType: 'talent_request_submit',
+        page: 'ClientPortal',
+        component: 'RequestTalentModal',
+        value: associateId ?? 'generic',
+        metadata: {
+          mode,
+          associateName,
+          location,
+          campaign,
+        },
+      });
 
       setStatus('success');
       setTimeout(() => {

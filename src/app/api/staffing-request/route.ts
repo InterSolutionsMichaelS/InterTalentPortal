@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       startDate,
       schedule,
 
+      contactTitle,
       firstName,
       lastName,
       phone,
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       startDate,
       schedule,
 
+      contactTitle,
       firstName,
       lastName,
       phone,
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest) {
         startDate,
         schedule,
 
+        contactTitle,
         firstName,
         lastName,
         phone,

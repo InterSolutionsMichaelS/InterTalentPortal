@@ -218,6 +218,7 @@ interface StaffingRequestEmailParams {
   startDate?: string;
   schedule?: string;
 
+  contactTitle: string;
   firstName: string;
   lastName: string;
   phone?: string;

@@ -12,6 +12,9 @@ import { db } from "@/lib/db";
       { name: 'RPM Living', slug: 'rpm' },
       { name: 'Asset Living', slug: 'assetliving' },
       { name: 'Greystar', slug: 'greystar' },
+      { name: 'Resprop Management', slug: 'resprop' },
+      { name: 'Bedrock', slug: 'bedrock' },
+      { name: 'GoldOller', slug: 'goldoller'},
     ];
 
     function getStrategicAccount(customerName?: string): string | null {

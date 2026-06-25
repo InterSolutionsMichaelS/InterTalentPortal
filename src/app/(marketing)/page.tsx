@@ -32,6 +32,7 @@ function clean(value?: string): string | undefined {
   return v.length > 0 ? v : undefined;
 }
 
+
 // Helper function to build search params string for API calls
 function buildSearchParams(params: {
   keywords?: string;
@@ -158,7 +159,6 @@ export default async function Home({
     sortDirection,
   });
 
-
   return (
     <div className="bg-gray-50">
       {/* Loading Overlay */}
@@ -188,7 +188,28 @@ export default async function Home({
           <div className="flex-1">
             {/* Results Header */}
             <div className="mb-6">
-              <WelcomeMessage />
+            <WelcomeMessage />
+
+            {hasFilters && (
+              <p className="text-xs text-gray-500 mb-2">
+                Showing results for:{' '}
+                <span className="font-medium text-gray-900">
+                  {[
+                    professionsArray?.join(', '),
+                    address,
+                    city && state
+                      ? `${city}, ${state}`
+                      : city || state,
+                    zipCode,
+                    safeRadius
+                      ? `${safeRadius} mi radius`
+                      : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(' • ')}
+                </span>
+              </p>
+            )}
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 Recommended Candidates
               </h2>
@@ -247,7 +268,7 @@ export default async function Home({
 
           <aside className="lg:w-72 shrink-0">
             <div className="sticky top-6">
-              <AdsPanel />
+              <AdsPanel targetAccount="base" />
             </div>
           </aside>
         </div>

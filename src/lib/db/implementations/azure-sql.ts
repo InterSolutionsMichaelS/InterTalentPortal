@@ -5,7 +5,7 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, } from '../interface';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, } from '../interface';
 import type { Ad } from '@/types/ad';
 import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
 
@@ -934,6 +934,7 @@ export class AzureSqlDatabase implements IDatabase {
     startDate?: string;
     schedule?: string;
 
+    contactTitle?: string;
     firstName?: string;
     lastName?: string;
     phone?: string;
@@ -961,6 +962,7 @@ export class AzureSqlDatabase implements IDatabase {
       .input('startDate', sql.Date, data.startDate || null)
       .input('schedule', sql.NVarChar(sql.MAX), data.schedule ?? null)
 
+      .input('contactTitle', sql.NVarChar(200), data.contactTitle ?? null)
       .input('firstName', sql.NVarChar(100), data.firstName ?? null)
       .input('lastName', sql.NVarChar(100), data.lastName ?? null)
       .input('phone', sql.NVarChar(50), data.phone ?? null)
@@ -990,7 +992,8 @@ export class AzureSqlDatabase implements IDatabase {
           Phone,
           Email,
           ContactMethod,
-          BestTimeToRespond
+          BestTimeToRespond,
+          ContactTitle
         )
         VALUES (
           GETDATE(),
@@ -1012,7 +1015,8 @@ export class AzureSqlDatabase implements IDatabase {
           @phone,
           @email,
           @contactMethod,
-          @bestTimeToRespond
+          @bestTimeToRespond,
+          @contactTitle
         )
       `);
   }
@@ -1067,6 +1071,62 @@ export class AzureSqlDatabase implements IDatabase {
           : [],
       };
     });
+  }
+
+  async insertAnalyticsEvent(
+    event: AnalyticsEvent
+  ): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool
+      .request()
+      .input(
+        'eventType',
+        sql.NVarChar(100),
+        event.eventType
+      )
+      .input(
+        'page',
+        sql.NVarChar(100),
+        event.page
+      )
+      .input(
+        'component',
+        sql.NVarChar(100),
+        event.component
+      )
+      .input(
+        'value',
+        sql.NVarChar(500),
+        event.value ?? null
+      )
+      .input(
+        'metadata',
+        sql.NVarChar(sql.MAX),
+        event.metadata
+          ? JSON.stringify(event.metadata)
+          : null
+      )
+      .query(`
+        INSERT INTO AnalyticsEvents
+        (
+          EventType,
+          Page,
+          Component,
+          Value,
+          Metadata,
+          CreatedAt
+        )
+        VALUES
+        (
+          @eventType,
+          @page,
+          @component,
+          @value,
+          @metadata,
+          GETUTCDATE()
+        )
+      `);
   }
 
   async createAd(data: {

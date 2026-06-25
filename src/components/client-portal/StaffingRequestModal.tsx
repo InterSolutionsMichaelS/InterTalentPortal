@@ -32,6 +32,7 @@ export default function StaffingRequestModal({
     const [startDate, setStartDate] = useState('');
     const [schedule, setSchedule] = useState('');
 
+    const [contactTitle, setContactTitle] = useState('');
     const [contactMethod, setContactMethod] = useState('');
     const [bestTimeToRespond, setBestTimeToRespond] = useState('');
 
@@ -57,7 +58,8 @@ export default function StaffingRequestModal({
                 duties,
                 startDate,
                 schedule,
-
+                
+                contactTitle,
                 firstName,
                 lastName,
                 phone,
@@ -406,8 +408,8 @@ export default function StaffingRequestModal({
 
                 <input
                     type="text"
-                    value={positionTitle}
-                    onChange={(e) => setPositionTitle(e.target.value)}
+                    value={contactTitle}
+                    onChange={(e) => setContactTitle(e.target.value)}
                     className="w-full rounded-lg border px-3 py-2"
                 />
             </div>
