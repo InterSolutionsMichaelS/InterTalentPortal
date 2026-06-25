@@ -46,6 +46,10 @@ interface ContactEmailParams {
   startDate?: string;   //added three optional fields to ensure json delivery of information 3/11/26 MS
   startTime?: string;
   endTime?: string;
+  requestMode?: string;
+  customerName?: string;
+  propertyName?: string;
+  strategicAccount?: string | null;
 }
 
 /**
@@ -63,10 +67,14 @@ export async function sendContactEmail(
     requesterEmail,
     requesterPhone,
     comment,
-    startDate,    // added to call the correct 12 hour format times in email
+    campaign,
+    requestMode,
+    customerName,
+    propertyName,
+    strategicAccount,
+    startDate,
     startTime,
     endTime,
-    campaign,
   } = params;
 
 
@@ -197,6 +205,11 @@ interface TalentRequestEmailParams {
   startDate?: string;    // added on 3/11/26 for json delivery of information
   startTime?: string;
   endTime?: string;
+  campaign?: string;
+  requestMode?: string;
+  customerName?: string | null;
+  propertyName?: string | null;
+  strategicAccount?: string | null;
 }
 
 interface StaffingRequestEmailParams {
@@ -235,7 +248,7 @@ interface StaffingRequestEmailParams {
 export async function sendTalentRequestEmail(
   params: TalentRequestEmailParams
 ): Promise<{ success: boolean; error?: string }> {
-  const { toEmail, requesterName, requesterEmail, requesterPhone, notes } = params;
+  const { toEmail, requesterName, requesterEmail, requesterPhone, notes, campaign, requestMode, customerName, propertyName, strategicAccount, startDate, startTime, endTime, } = params;
 
   if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     console.warn("SMTP not configured - talent request email not sent");
@@ -267,6 +280,9 @@ export async function sendTalentRequestEmail(
       </table>
 
       <h3 style="color: #333;">Requested Talent Details</h3>
+
+      <p><strong>Property:</strong> ${propertyName || "Not specified"}</p>
+
       <div style="background: #f9f9f9; padding: 15px; border-left: 3px solid #0077B5; margin: 15px 0;">
         ${notes.replace(/\n/g, "<br>")}
       </div>

@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
       associateName,
       campaign,
       customerName,
+      propertyName,
     } = body || {};
 
     console.log("API customerName:", customerName);
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
       campaign,
       customerName, // 👈 THIS is what fixes your issue
       strategicAccount,
+      propertyName,
     });
 
     // Default recipient (used for GENERIC / UNAVAILABLE)
@@ -116,6 +118,9 @@ export async function POST(req: NextRequest) {
       email,
       phone,
       location,
+      propertyName,
+      customerName,
+      strategicAccount,
       startDate,
       startTime,
       endTime,
@@ -141,7 +146,13 @@ export async function POST(req: NextRequest) {
           requesterEmail: email,
           requesterPhone: phone,
           comment: notes,
+
           campaign,
+          requestMode,
+          customerName,
+          propertyName,
+          strategicAccount,
+
           startDate,
           startTime,
           endTime,
@@ -158,6 +169,13 @@ export async function POST(req: NextRequest) {
           requesterEmail: email,
           requesterPhone: phone,
           notes: `NO ASSOCIATES AVAILABLE\nCampaign: ${campaign ?? "N/A"}\n\n${notes}`,
+
+          campaign,
+          requestMode,
+          customerName,
+          propertyName,
+          strategicAccount,
+
           startDate,
           startTime,
           endTime,
@@ -174,6 +192,13 @@ export async function POST(req: NextRequest) {
           requesterEmail: email,
           requesterPhone: phone,
           notes,
+
+          campaign,
+          requestMode,
+          customerName,
+          propertyName,
+          strategicAccount,
+
           startDate,
           startTime,
           endTime,

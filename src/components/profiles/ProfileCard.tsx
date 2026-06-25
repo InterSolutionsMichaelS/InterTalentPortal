@@ -6,6 +6,7 @@ import { useSearchStore } from '@/store/searchStore';
 import RequestTalentModal from '@/components/modals/RequestTalentModal';
 import { highlightKeywords } from '@/utils/highlightText';
 import { trackEvent } from '@/lib/analytics/trackEvent';
+import { useSearchParams } from "next/navigation"; //added on 6/25/26 for request talent button to include more data
 
 interface ProfileCardProps {
   profile: Profile;
@@ -23,6 +24,13 @@ export default function ProfileCard({
   if (!value) return '';
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
+
+  const searchParams = useSearchParams();
+
+  const propertyName =
+    searchParams.get("propertyName") ??
+    searchParams.get("department") ??
+    undefined;
 
   // Bookmark state from Zustand store
   const bookmarkedIds = useSearchStore((state) => state.bookmarkedIds);
@@ -273,6 +281,7 @@ export default function ProfileCard({
 
             requestMode="ASSOCIATE"
             campaign="Generic"
+            propertyName={propertyName}
           />
         )}
       </>
@@ -429,6 +438,7 @@ export default function ProfileCard({
 
           requestMode="ASSOCIATE"
           campaign="Generic"
+          propertyName={propertyName}
         />
       )}
     </div>

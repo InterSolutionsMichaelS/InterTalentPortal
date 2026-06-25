@@ -1416,6 +1416,7 @@ export class AzureSqlDatabase implements IDatabase {
     campaign?: string;
     customerName?: string;
     strategicAccount?: string | null;
+    propertyName?: string | null;
   }): Promise<void> {
     const pool = await this.getConnection();
 
@@ -1443,6 +1444,7 @@ export class AzureSqlDatabase implements IDatabase {
       .input('customerName', sql.NVarChar(200), data.customerName ?? null)
 
       .input('strategicAccount', sql.NVarChar(100), data.strategicAccount ?? null)
+      .input('propertyName', sql.NVarChar(200), data.propertyName ?? null)
 
       .query(`
         INSERT INTO TalentRequests (
@@ -1461,6 +1463,7 @@ export class AzureSqlDatabase implements IDatabase {
           Campaign,
           CustomerName,
           StrategicAccount,
+          propertyName,
           CreatedAt
         )
         VALUES (
@@ -1479,6 +1482,7 @@ export class AzureSqlDatabase implements IDatabase {
           @campaign,
           @customerName,
           @strategicAccount,
+          @propertyName,
           GETDATE()
         )
       `);

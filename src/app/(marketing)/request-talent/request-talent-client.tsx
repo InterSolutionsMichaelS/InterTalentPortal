@@ -34,6 +34,8 @@ useEffect(() => {
       ? refCode.replace('TTE-', '')
       : undefined;
 
+  console.log("department:", searchParams.get("department"));
+  console.log("propertyName:", searchParams.get("propertyName"));
   
   return (
     <>
@@ -66,6 +68,11 @@ useEffect(() => {
               : 'GENERIC'
           }
           customerName={searchParams.get('customerName') ?? undefined}
+          propertyName={
+            searchParams.get('propertyName') ??
+            searchParams.get('department') ??
+            undefined
+          }
         />
       )}
     </>

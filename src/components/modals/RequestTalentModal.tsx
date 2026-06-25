@@ -23,6 +23,7 @@ interface RequestTalentModalProps {
   personId?: string;
   //added customerName string for reporting talent tuesday / strategic accounts 4/30/26 
   customerName?: string;
+  propertyName?: string; //added on 6/25/26 for more clarity in emailed requests 
 }
 
 //added logic for contact name email and phone to be pulled through. 1/27/26 MS
@@ -38,7 +39,8 @@ export default function RequestTalentModal({
   contactName,
   contactEmail,
   contactPhone,
-  customerName
+  customerName,
+  propertyName
 }: RequestTalentModalProps) {
   // 🔑 Single source of truth for behavior
   const mode: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE' =
@@ -49,6 +51,7 @@ export default function RequestTalentModal({
     name: '',
     email: '',
     phone: '',
+    propertyName: propertyName ?? '',
     notes: '',
     startDate: '',
     startTime: '',
@@ -66,12 +69,13 @@ export default function RequestTalentModal({
       name: contactName ?? prev.name,
       email: contactEmail ?? prev.email,
       phone: contactPhone ?? prev.phone,
+      propertyName: propertyName ?? prev.propertyName,
       notes:
   mode === 'ASSOCIATE' && associateName
     ? `Requesting associate: ${associateName}\n\n`
     : '',
     }));
-}, [contactName, contactEmail, contactPhone, associateName, mode]);
+}, [contactName, contactEmail, contactPhone, associateName, mode, propertyName]);
   useEffect(() => {
     document.body.style.overflow = 'hidden';
 
@@ -226,6 +230,24 @@ export default function RequestTalentModal({
                 }
                 className="w-full border rounded-md px-3 py-2 text-gray-900"
               />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm text-gray-600">
+            Property Name
+          </label>
+
+          <input
+            type="text"
+            value={formData.propertyName}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                propertyName: e.target.value,
+              })
+            }
+            className="w-full border rounded-md px-3 py-2 text-gray-900"
+          />
         </div>
           {/* Optional Scheduling Fields */}
 

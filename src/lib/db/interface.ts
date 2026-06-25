@@ -225,6 +225,7 @@ export interface IDatabase {
     campaign?: string;
     customerName?: string;
     strategicAccount?: string | null;
+    propertyName?: string | null;
   }): Promise<void>;
 }
 
