@@ -533,7 +533,7 @@ export class AzureSqlDatabase implements IDatabase {
           request.input(paramName, sql.NVarChar(sql.MAX), `%${kw.trim()}%`);
           return `(ProfessionalSummary LIKE @${paramName} OR Name LIKE @${paramName} OR City LIKE @${paramName} OR Skill LIKE @${paramName})`;
         })
-        .join(' OR ');
+        .join(' AND ');
       conditions.push(`(${keywordConditions})`);
     }
 
@@ -559,6 +559,16 @@ export class AzureSqlDatabase implements IDatabase {
       `Using effective radius: ${effectiveRadius} miles`
     );
 
+
+    console.log({
+      address,
+      city,
+      state,
+      zipCode,
+      zipCodes,
+      radius,
+      effectiveRadius,
+    });
     // ═══════════════════════════════════════════════════════════════
     // RADIUS SEARCH - Uses Azure SQL GEOGRAPHY for fast spatial queries
     // ═══════════════════════════════════════════════════════════════
@@ -665,7 +675,7 @@ export class AzureSqlDatabase implements IDatabase {
             .map((kw) => {
               return `(ProfessionalSummary LIKE '%${kw.trim().replace(/'/g, "''")}%' OR Name LIKE '%${kw.trim().replace(/'/g, "''")}%' OR City LIKE '%${kw.trim().replace(/'/g, "''")}%' OR Skill LIKE '%${kw.trim().replace(/'/g, "''")}%')`;
             })
-            .join(' OR ');
+            .join(' AND ');
           spatialConditions.push(`(${keywordConditions})`);
         }
 

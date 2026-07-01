@@ -47,7 +47,7 @@ def _env_db(*keys: str, default: str = '') -> str:
 CONFIG = {
     'server': _env_db( 'INTERTALENT_SQL_SERVER', default='ipsql2025.database.windows.net'),
     'database': _env_db( 'INTERTALENT_SQL_DATABASE', default='intertalent_DB'),
-    'username': _env_db( 'INTERTALENT_SQL_USER'),
+    'username': _env_db( 'INTERTALENT_SQL_USER', default='sqladmin'),
     'password': _env_db( 'INTERTALENT_SQL_PASSWORD'),
     'table_name': 'RayTestShowcase',  # Change to your table name
     'cache_file': 'zip_coordinates_cache.json',

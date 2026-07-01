@@ -34,8 +34,7 @@ useEffect(() => {
       ? refCode.replace('TTE-', '')
       : undefined;
 
-  console.log("department:", searchParams.get("department"));
-  console.log("propertyName:", searchParams.get("propertyName"));
+  
   
   return (
     <>

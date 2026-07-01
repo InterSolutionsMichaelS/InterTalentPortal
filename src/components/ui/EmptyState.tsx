@@ -36,6 +36,9 @@ export default function EmptyState({
         </svg>
       </div>
 
+      {/* ⭐ Request Talent Button (tight spacing) */}
+          {extraAction && <div>{extraAction}</div>}
+
       <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
 
       <p className="text-gray-600 mb-6 max-w-md mx-auto">{message}</p>
@@ -70,8 +73,7 @@ export default function EmptyState({
             </button>
           )}
 
-          {/* ⭐ Request Talent Button (tight spacing) */}
-          {extraAction && <div>{extraAction}</div>}
+          
         </div>
       )}
     </div>

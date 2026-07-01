@@ -6,6 +6,8 @@ import ClientPortalRequestTalentModal from '@/components/client-portal/ClientPor
 import { trackEvent } from '@/lib/analytics/trackEvent';
 
 
+
+
 interface ClientPortalInjectTalentModalProps {
   children: React.ReactNode;
   location?: string;
@@ -27,32 +29,54 @@ export default function ClientPortalInjectTalentModal({ children, location, }: C
     }
   }, []);
 
+
   return (
     <>
-      {/* Existing EmptyState UI */}
-      {children}
-
-      {/* New Request Talent button under it */}
-      <div className="text-center mt-1">
+      <div className="text-center mb-6">
         <button
           onClick={() => {
+
             trackEvent({
               eventType: 'talent_request_open',
-              page: 'ClientPortal',
+              page: 'Home',
               component: 'InjectTalentModal',
               value: location ?? 'unknown',
             });
+
             setOpen(true);
           }}
-          className="inline-block bg-[var(--color-primary)] hover:opacity-90 text-white px-6 py-3 rounded-md font-semibold transition-opacity"
+          className="
+            inline-flex
+            items-center
+            justify-center
+            w-full
+            max-w-md
+            bg-[var(--color-primary)] 
+            hover:opacity-90
+            text-white
+            text-lg
+            font-bold
+            px-10
+            py-4
+            rounded-xl
+            shadow-lg
+            hover:shadow-xl
+            transition
+          "
         >
           Request Talent
         </button>
       </div>
 
-      {open && <ClientPortalRequestTalentModal 
-      location={location} 
-      onClose={() => setOpen(false)} />}
+      {children}
+
+      {open && (
+        <ClientPortalRequestTalentModal
+          location={location}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
+  
 }

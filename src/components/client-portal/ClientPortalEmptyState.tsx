@@ -61,7 +61,13 @@ export default function ClientPortalEmptyState({
         </svg>
       </div>
 
+      {/* ⭐ Request Talent Button (tight spacing) */}
+          {extraAction && <div>{extraAction}</div>}
+
+      
+
       <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      
 
       <p className="text-gray-600 mb-6 max-w-md mx-auto">{message}</p>
 
@@ -75,7 +81,7 @@ export default function ClientPortalEmptyState({
           <li>• Using more general search terms</li>
         </ul>
       </div>
-
+      
       {/* Clear Filters Button */}
       {(actionHref || onAction) && (
         <div className="flex flex-col items-center space-y-2">
@@ -95,10 +101,14 @@ export default function ClientPortalEmptyState({
             </button>
           )}
 
-          {/* ⭐ Request Talent Button (tight spacing) */}
-          {extraAction && <div>{extraAction}</div>}
+          
+
+          
         </div>
+        
       )}
+      
     </div>
+    
   );
 }

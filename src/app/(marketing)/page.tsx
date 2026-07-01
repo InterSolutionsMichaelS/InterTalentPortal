@@ -72,7 +72,6 @@ export default async function Home({
 }) {
   const params = await searchParams;
 
-  console.log('HOME PAGE PARAMS:', params);
 
   // Extract + normalize search parameters (EMPTY STRINGS => undefined)
   const keywordsRaw = typeof params.keywords === 'string' ? params.keywords : undefined;
@@ -85,7 +84,6 @@ export default async function Home({
       ? params.address
       : undefined
   );
-  console.log('HOME PAGE ADDRESS:', address);
   const radius =
     typeof params.radius === 'string' && params.radius.trim() !== ''
       ? Number.parseInt(params.radius, 10)

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import RequestTalentModal from '@/components/modals/RequestTalentModal';
 import { trackEvent } from '@/lib/analytics/trackEvent';
 
+
 interface InjectTalentModalProps {
   children: React.ReactNode;
   location?: string;
@@ -25,36 +26,52 @@ export default function InjectTalentModal({ children, location, }: InjectTalentM
       setOpen(true);
     }
   }, []);
-
   return (
     <>
-      {/* Existing EmptyState UI */}
-      {children}
-
-      {/* New Request Talent button under it */}
-      <div className="text-center mt-1">
+      <div className="text-center mb-6">
         <button
           onClick={() => {
-            console.log('talent_request_open fired');
 
             trackEvent({
               eventType: 'talent_request_open',
-              page: 'ClientPortal',
+              page: 'Home',
               component: 'InjectTalentModal',
               value: location ?? 'unknown',
             });
 
             setOpen(true);
           }}
-          className="inline-block bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white px-6 py-3 rounded-md font-semibold transition"
+          className="
+            inline-flex
+            items-center
+            justify-center
+            w-full
+            max-w-md
+            bg-[#1e3a5f]
+            hover:bg-[#2d5a8f]
+            text-white
+            text-lg
+            font-bold
+            px-10
+            py-4
+            rounded-xl
+            shadow-lg
+            hover:shadow-xl
+            transition
+          "
         >
           Request Talent
         </button>
       </div>
 
-      {open && <RequestTalentModal 
-      location={location} 
-      onClose={() => setOpen(false)} />}
+      {children}
+
+      {open && (
+        <RequestTalentModal
+          location={location}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
