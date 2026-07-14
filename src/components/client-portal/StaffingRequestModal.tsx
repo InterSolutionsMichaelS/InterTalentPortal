@@ -36,8 +36,27 @@ export default function StaffingRequestModal({
     const [contactMethod, setContactMethod] = useState('');
     const [bestTimeToRespond, setBestTimeToRespond] = useState('');
 
+    const [validationError, setValidationError] = useState('');
+
     const handleSubmit = async () => {
         try {
+
+            setValidationError('');
+
+
+            if (
+                !firstName.trim() ||
+                !lastName.trim() ||
+                !contactTitle.trim() ||
+                !phone.trim() ||
+                !email.trim() ||
+                !contactMethod.trim()
+            ) {
+                setValidationError('Please complete your name, phone number, email address, and preferred contact method before submitting.');
+
+            return;
+            }
+
             const response = await fetch(
             '/api/staffing-request',
             {
@@ -368,6 +387,12 @@ export default function StaffingRequestModal({
             <h4 className="mb-4 border-b pb-2 text-lg font-bold text-[#022949]">
             Your Contact Information
             </h4>
+
+            {validationError && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {validationError}
+                </div>
+            )}
 
             <div className="space-y-4">
 
