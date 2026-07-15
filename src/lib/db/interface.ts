@@ -97,6 +97,73 @@ export interface LocationSuggestion {
   value: string;
   type: 'address' | 'city' | 'state' | 'zipcode';
 }
+
+
+export interface CreateInterTalentRequestInput {
+  portalSource: string;
+  strategicClientName?: string | null;
+
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string | null;
+
+  company?: string | null;
+  property?: string | null;
+  location?: string | null;
+  zipCode?: string | null;
+
+  associateId?: string | null;
+  associateName?: string | null;
+
+  jobType?: string | null;
+  shiftDetails?: string | null;
+  startDate?: string | null;
+  notes?: string | null;
+
+  assignedOffice?: string | null;
+  distributionList?: string | null;
+}
+
+export interface CreateInterTalentRequestResult {
+  requestId: string;
+  status: string;
+}
+
+export interface CreateInterTalentRequestEventInput {
+  requestId: string;
+  eventType:
+    | 'Request Created'
+    | 'Routing Completed'
+    | 'Internal Notification Sent'
+    | 'After-Hours Customer Message Sent'
+    | 'Ownership Accepted'
+    | 'Duplicate Ownership Attempt'
+    | 'Reminder Sent'
+    | 'Escalation Sent'
+    | 'Request Closed'
+    | 'Routing Exception';
+
+  performedByName?: string | null;
+  performedByEmail?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface UpdateInterTalentRequestRoutingInput {
+  requestId: string;
+
+  assignedOffice: string;
+  market?: string | null;
+  region?: string | null;
+  distributionList?: string | null;
+
+  officeIsOpen: boolean;
+  nextOfficeOpenDateTime?: Date | null;
+
+  status?: string;
+}
+
+
 export interface OfficeRoutingInfo {
   Id: number;
   OfficeName: string;
@@ -108,6 +175,22 @@ export interface OfficeRoutingInfo {
   Longitude: number;
   RadiusMiles: number;
   IsActive: boolean;
+}
+
+export interface OfficeRoutingResult {
+  officeId: number;
+  officeName: string;
+  officeEmail: string;
+  division: string;
+  region: string;
+
+  latitude: number;
+  longitude: number;
+  distanceMiles: number;
+
+  // These will be populated later without changing callers
+  isOfficeOpen?: boolean;
+  nextOfficeOpenDateTime?: Date;
 }
 /**
  * Database Interface
@@ -144,9 +227,6 @@ export interface IDatabase {
   }): Promise<void>;
 
   deleteAd(id: number): Promise<void>;
-
-  
-
   
   updateAd(id: number, data: Partial<{
     title: string;
@@ -171,6 +251,18 @@ export interface IDatabase {
   saveLocationSuggestions(
     query: string,
     suggestions: LocationSuggestion[]
+  ): Promise<void>;
+
+  createInterTalentRequest(
+    data: CreateInterTalentRequestInput
+  ): Promise<CreateInterTalentRequestResult>;
+
+  createRequestEvent(
+    data: CreateInterTalentRequestEventInput
+  ): Promise<void>;
+
+  updateInterTalentRequestRouting(
+    data: UpdateInterTalentRequestRoutingInput
   ): Promise<void>;
 
   createStaffingRequest(data: {

@@ -35,4 +35,8 @@ export type {
   OfficeInfo,
   LocationEmailResult,
   AnalyticsEvent,
+  CreateInterTalentRequestInput,
+  CreateInterTalentRequestResult,
+  CreateInterTalentRequestEventInput,
+  UpdateInterTalentRequestRoutingInput,
 } from './interface';

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import {
-  getAddressLocation,
-  calculateDistance,
-} from '@/lib/geospatial';
+import { resolveOffice } from '@/lib/services/officeRoutingService';
 import {
   sendStaffingRequestEmail
 } from '@/lib/email/send-email';
@@ -39,49 +36,20 @@ export async function POST(request: NextRequest) {
     const fullAddress =
       `${streetAddress}, ${city}, ${state}`;
 
-    const location = await getAddressLocation(fullAddress);
+    const nearestOffice =
+      await resolveOffice(fullAddress);
 
-    console.log('STAFFING REQUEST BODY');
-    console.log(body);
-
-    console.log(
-    'Address:',
-    `${streetAddress}, ${city}, ${state}`
-    );
-
-    if (!location) {
+    if (!nearestOffice) {
       return NextResponse.json(
-        { error: 'Unable to geocode address' },
+        { error: 'Unable to determine routing office' },
         { status: 400 }
       );
     }
 
-    const offices = await db.getOfficeRoutingData();
-
-    const nearestOffice = offices
-      .filter((office) => office.IsActive)
-      .map((office) => ({
-        ...office,
-        distanceMiles: calculateDistance(
-          location.lat,
-          location.lng,
-          office.Latitude,
-          office.Longitude
-        ),
-      }))
-      .sort((a, b) => a.distanceMiles - b.distanceMiles)[0];
-
-    if (!nearestOffice) {
-      return NextResponse.json(
-        { error: 'No active office found' },
-        { status: 404 }
-      );
-    }
-
     await db.createStaffingRequest({
-      officeId: nearestOffice.Id,
-      officeName: nearestOffice.OfficeName,
-      officeEmail: nearestOffice.NotificationEmails,
+      officeId: nearestOffice.officeId,
+      officeName: nearestOffice.officeName,
+      officeEmail: nearestOffice.officeEmail,
 
       managementCompany,
       propertyName,
@@ -106,9 +74,9 @@ export async function POST(request: NextRequest) {
     });
 
     await sendStaffingRequestEmail({
-        toEmail: nearestOffice.NotificationEmails,
+        toEmail: nearestOffice.officeEmail,
 
-        officeName: nearestOffice.OfficeName,
+        officeName: nearestOffice.officeName,
 
         managementCompany,
         propertyName,
@@ -136,9 +104,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      officeId: nearestOffice.Id,
-      officeName: nearestOffice.OfficeName,
-      officeEmail: nearestOffice.NotificationEmails,
+      officeId: nearestOffice.officeId,
+      officeName: nearestOffice.officeName,
+      officeEmail: nearestOffice.officeEmail,
       distanceMiles: nearestOffice.distanceMiles,
     });
   } catch (error) {

@@ -5,7 +5,7 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, } from '../interface';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, UpdateInterTalentRequestRoutingInput } from '../interface';
 import type { Ad } from '@/types/ad';
 import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
 
@@ -926,6 +926,215 @@ export class AzureSqlDatabase implements IDatabase {
     }
   }
 
+  async createInterTalentRequest(
+      data: CreateInterTalentRequestInput
+  ): Promise<CreateInterTalentRequestResult> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+
+          .input("portalSource", sql.NVarChar(200), data.portalSource)
+
+          .input("strategicClientName", sql.NVarChar(200), data.strategicClientName ?? null)
+
+          .input("customerName", sql.NVarChar(200), data.customerName)
+
+          .input("customerEmail", sql.NVarChar(254), data.customerEmail)
+
+          .input("customerPhone", sql.NVarChar(200), data.customerPhone ?? null)
+
+          .input("company", sql.NVarChar(200), data.company ?? null)
+
+          .input("property", sql.NVarChar(200), data.property ?? null)
+
+          .input("location", sql.NVarChar(200), data.location ?? null)
+
+          .input("zipCode", sql.NVarChar(10), data.zipCode ?? null)
+
+          .input("associateId", sql.BigInt,
+              data.associateId ? Number(data.associateId) : null
+          )
+
+          .input("associateName", sql.NVarChar(200), data.associateName ?? null)
+
+          .input("jobType", sql.NVarChar(200), data.jobType ?? null)
+
+          .input("shiftDetails", sql.NVarChar(sql.MAX), data.shiftDetails ?? null)
+
+          .input("startDate", sql.Date, data.startDate ?? null)
+
+          .input("notes", sql.NVarChar(sql.MAX), data.notes ?? null)
+
+          .input("assignedOffice", sql.NVarChar(200), data.assignedOffice ?? null)
+
+          .input("distributionList", sql.NVarChar(254), data.distributionList ?? null)
+
+          .query(`
+            INSERT INTO dbo.InterTalentRequests
+            (
+                PortalSource,
+                StrategicClientName,
+
+                CustomerName,
+                CustomerEmail,
+                CustomerPhone,
+
+                Company,
+                Property,
+                Location,
+                ZipCode,
+
+                AssociateID,
+                AssociateName,
+
+                JobType,
+                ShiftDetails,
+                StartDate,
+                Notes,
+
+                AssignedOffice,
+                DistributionList
+
+            )
+
+            OUTPUT
+                INSERTED.RequestID,
+                INSERTED.Status
+
+            VALUES
+            (
+                @portalSource,
+                @strategicClientName,
+
+                @customerName,
+                @customerEmail,
+                @customerPhone,
+
+                @company,
+                @property,
+                @location,
+                @zipCode,
+
+                @associateId,
+                @associateName,
+
+                @jobType,
+                @shiftDetails,
+                @startDate,
+                @notes,
+
+                @assignedOffice,
+                @distributionList
+            )
+          `);
+
+      return {
+          requestId: result.recordset[0].RequestID,
+          status: result.recordset[0].Status
+      };
+  }
+
+  async createRequestEvent(
+      data: CreateInterTalentRequestEventInput
+  ): Promise<void> {
+
+      const pool = await this.getConnection();
+
+      await pool.request()
+
+          .input("requestId", sql.UniqueIdentifier, data.requestId)
+
+          .input("eventType", sql.NVarChar(200), data.eventType)
+
+          .input("performedByName",
+              sql.NVarChar(200),
+              data.performedByName ?? null)
+
+          .input("performedByEmail",
+              sql.NVarChar(254),
+              data.performedByEmail ?? null)
+
+          .input("notes",
+              sql.NVarChar(sql.MAX),
+              data.notes ?? null)
+
+          .input(
+              "metadata",
+              sql.NVarChar(sql.MAX),
+              data.metadata
+                  ? JSON.stringify(data.metadata)
+                  : null
+          )
+
+          .query(`
+            INSERT INTO dbo.InterTalentRequestEvents
+            (
+                RequestID,
+                EventType,
+                PerformedByName,
+                PerformedByEmail,
+                Notes,
+                Metadata
+            )
+            VALUES
+            (
+                @requestId,
+                @eventType,
+                @performedByName,
+                @performedByEmail,
+                @notes,
+                @metadata
+            )
+          `);
+  }
+
+  async updateInterTalentRequestRouting(
+      data: UpdateInterTalentRequestRoutingInput
+  ): Promise<void> {
+
+      const pool = await this.getConnection();
+
+      await pool.request()
+
+          .input("requestId", sql.UniqueIdentifier, data.requestId)
+          .input("assignedOffice", sql.NVarChar(200), data.assignedOffice)
+          .input("market", sql.NVarChar(200), data.market ?? null)
+          .input("region", sql.NVarChar(200), data.region ?? null)
+          .input("distributionList", sql.NVarChar(254), data.distributionList ?? null)
+
+          .input("officeIsOpen", sql.Bit, data.officeIsOpen)
+          .input(
+              "nextOfficeOpenDateTime",
+              sql.DateTime2,
+              data.nextOfficeOpenDateTime ?? null
+          )
+
+          .input(
+              "status",
+              sql.NVarChar(200),
+              data.status ?? "Notified"
+          )
+
+          .query(`
+              UPDATE dbo.InterTalentRequests
+              SET
+
+                  AssignedOffice = @assignedOffice,
+                  Market = @market,
+                  Region = @region,
+                  DistributionList = @distributionList,
+
+                  OfficeIsOpenAtSubmission = @officeIsOpen,
+                  NextOfficeOpenDateTime = @nextOfficeOpenDateTime,
+
+                  Status = @status,
+
+                  UpdatedAt = SYSUTCDATETIME()
+
+              WHERE RequestID = @requestId
+          `);
+  }
 
   async createStaffingRequest(data: {
     officeId: number;
