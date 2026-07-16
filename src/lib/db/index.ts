@@ -38,5 +38,6 @@ export type {
   CreateInterTalentRequestInput,
   CreateInterTalentRequestResult,
   CreateInterTalentRequestEventInput,
-  UpdateInterTalentRequestRoutingInput,
+  ApplyInterTalentRoutingInput,
+  ApplyInterTalentRoutingResult,
 } from './interface';

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { captureInterTalentRequest }
+    from "@/lib/services/interTalentRequestService";
 import {
-  sendContactEmail,
-  sendTalentRequestEmail,
-} from "@/lib/email/send-email";
+  notifyOfficeOfTalentRequest,
+  notifyUnavailable,
+} from "@/lib/services/notificationService";
 import { db } from "@/lib/db";
 
 
@@ -75,23 +77,48 @@ export async function POST(req: NextRequest) {
     const strategicAccount = getStrategicAccount(customerName);
 
 
-    await db.insertTalentRequest({
-      name,
-      email,
-      phone,
-      notes,
-      location,
-      personId,
-      associateId,
-      associateName,
-      startDate,
-      startTime,
-      endTime,
-      requestMode,
-      campaign,
-      customerName, // 👈 THIS is what fixes your issue
-      strategicAccount,
-      propertyName,
+    const request = await captureInterTalentRequest({
+
+        portalSource: "InterTalent Portal",
+
+        strategicClientName: strategicAccount,
+
+        customerName:
+            customerName ??
+            propertyName ??
+            name,
+
+        customerEmail: email,
+
+        customerPhone: phone,
+
+        company: customerName,
+
+        property: propertyName,
+
+        location,
+
+        zipCode: null,
+
+        associateId: associateId
+            ?? personId
+            ?? null,
+
+        associateName,
+
+        jobType: requestMode,
+
+        shiftDetails: [
+            startTime,
+            endTime,
+        ]
+            .filter(Boolean)
+            .join(" - "),
+
+        startDate,
+
+        notes,
+
     });
 
     // Default recipient (used for GENERIC / UNAVAILABLE)
@@ -137,7 +164,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 🔑 Associate requests go through Contact email (office-aware)
-        await sendContactEmail({
+        await notifyOfficeOfTalentRequest({
           toEmail, // office / branch email
           profileName: associateName,
           personId,
@@ -163,7 +190,7 @@ export async function POST(req: NextRequest) {
 
       case "UNAVAILABLE": {
         // Escalation path – no associate
-        await sendTalentRequestEmail({
+        await notifyUnavailable({
           toEmail, // InterTalent / fallback inbox
           requesterName: name,
           requesterEmail: email,
@@ -186,7 +213,7 @@ export async function POST(req: NextRequest) {
       case "GENERIC":
       default: {
         // Generic staffing request
-        await sendTalentRequestEmail({
+        await notifyUnavailable({
           toEmail,
           requesterName: name,
           requesterEmail: email,

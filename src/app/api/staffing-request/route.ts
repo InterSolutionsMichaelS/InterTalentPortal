@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { resolveOffice } from '@/lib/services/officeRoutingService';
+import { captureInterTalentRequest }
+    from "@/lib/services/interTalentRequestService";
 import {
-  sendStaffingRequestEmail
-} from '@/lib/email/send-email';
+    notifyStaffingRequest
+} from "@/lib/services/notificationService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,47 +36,63 @@ export async function POST(request: NextRequest) {
     const fullAddress =
       `${streetAddress}, ${city}, ${state}`;
 
-    const nearestOffice =
-      await resolveOffice(fullAddress);
+    const routing = await captureInterTalentRequest({
+      portalSource: "Staffing Request",
 
-    if (!nearestOffice) {
+      customerName:
+        managementCompany ??
+        propertyName ??
+        "Unknown",
+
+      customerEmail: email,
+      customerPhone: phone || null,
+
+      company: managementCompany || null,
+      property: propertyName || null,
+      location: fullAddress,
+
+      jobType: positionTitle || positionType || null,
+
+      shiftDetails:
+        [duties, schedule]
+          .filter(Boolean)
+          .join("\n") || null,
+
+      startDate: startDate || null,
+
+      notes: [
+        positionType ? `Position Type: ${positionType}` : null,
+        positionTitle ? `Position Title: ${positionTitle}` : null,
+        firstName || lastName
+          ? `Contact: ${[firstName, lastName].filter(Boolean).join(" ")}`
+          : null,
+        contactTitle ? `Contact Title: ${contactTitle}` : null,
+        contactMethod
+          ? `Preferred Contact Method: ${contactMethod}`
+          : null,
+        bestTimeToRespond
+          ? `Best Time: ${bestTimeToRespond}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    });
+
+    if (!routing.officeEmail || !routing.officeName) {
       return NextResponse.json(
-        { error: 'Unable to determine routing office' },
+        {
+          error: "Request was captured, but the routing office could not be determined",
+          requestId: routing.requestId,
+        },
         { status: 400 }
       );
     }
 
-    await db.createStaffingRequest({
-      officeId: nearestOffice.officeId,
-      officeName: nearestOffice.officeName,
-      officeEmail: nearestOffice.officeEmail,
+    await notifyStaffingRequest({
 
-      managementCompany,
-      propertyName,
-      streetAddress,
-      city,
-      state,
+        toEmail: routing.officeEmail,
 
-      positionType,
-      positionTitle,
-      duties,
-      startDate,
-      schedule,
-
-      contactTitle,
-      firstName,
-      lastName,
-      phone,
-      email,
-
-      contactMethod,
-      bestTimeToRespond,
-    });
-
-    await sendStaffingRequestEmail({
-        toEmail: nearestOffice.officeEmail,
-
-        officeName: nearestOffice.officeName,
+        officeName: routing.officeName,
 
         managementCompany,
         propertyName,
@@ -100,14 +116,16 @@ export async function POST(request: NextRequest) {
 
         contactMethod,
         bestTimeToRespond,
-        });
+    });
 
     return NextResponse.json({
-      success: true,
-      officeId: nearestOffice.officeId,
-      officeName: nearestOffice.officeName,
-      officeEmail: nearestOffice.officeEmail,
-      distanceMiles: nearestOffice.distanceMiles,
+        success: true,
+
+        officeId: routing.officeId,
+
+        officeName: routing.officeName,
+
+        officeEmail: routing.officeEmail,
     });
   } catch (error) {
     console.error('Staffing request error:', error);

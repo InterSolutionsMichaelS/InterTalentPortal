@@ -149,18 +149,28 @@ export interface CreateInterTalentRequestEventInput {
   metadata?: Record<string, unknown> | null;
 }
 
-export interface UpdateInterTalentRequestRoutingInput {
+export interface ApplyInterTalentRoutingInput {
   requestId: string;
 
-  assignedOffice: string;
-  market?: string | null;
-  region?: string | null;
-  distributionList?: string | null;
+  officeName: string;
+}
 
-  officeIsOpen: boolean;
-  nextOfficeOpenDateTime?: Date | null;
+export interface ApplyInterTalentRoutingResult {
 
-  status?: string;
+    assignedOffice: string;
+
+    division: string;
+
+    region: string;
+
+    distributionList: string;
+
+    officeIsOpen: boolean;
+
+    nextOfficeOpenDateTime?: Date | null;
+
+    status: string;
+
 }
 
 
@@ -184,13 +194,7 @@ export interface OfficeRoutingResult {
   division: string;
   region: string;
 
-  latitude: number;
-  longitude: number;
   distanceMiles: number;
-
-  // These will be populated later without changing callers
-  isOfficeOpen?: boolean;
-  nextOfficeOpenDateTime?: Date;
 }
 /**
  * Database Interface
@@ -261,8 +265,8 @@ export interface IDatabase {
     data: CreateInterTalentRequestEventInput
   ): Promise<void>;
 
-  updateInterTalentRequestRouting(
-    data: UpdateInterTalentRequestRoutingInput
+  applyInterTalentRouting(
+      data: ApplyInterTalentRoutingInput
   ): Promise<void>;
 
   createStaffingRequest(data: {

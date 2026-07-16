@@ -36,13 +36,18 @@ export async function resolveOffice(
   }
 
   return {
+
     officeId: nearestOffice.Id,
+
     officeName: nearestOffice.OfficeName,
+
     officeEmail: nearestOffice.NotificationEmails,
+
     division: nearestOffice.Division,
+
     region: nearestOffice.Region,
-    latitude: nearestOffice.Latitude,
-    longitude: nearestOffice.Longitude,
+
     distanceMiles: nearestOffice.distanceMiles,
-  };
+
+};
 }

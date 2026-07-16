@@ -2,11 +2,22 @@ import { db } from "@/lib/db";
 import { resolveOffice } from "@/lib/services/officeRoutingService";
 import type {
   CreateInterTalentRequestInput,
+  OfficeRoutingResult,
 } from "@/lib/db/interface";
+
+export interface CaptureInterTalentRequestResult {
+  requestId: string;
+  officeId: number | null;
+  officeName: string | null;
+  officeEmail: string | null;
+  division: string | null;
+  region: string | null;
+  status: string;
+}
 
 export async function captureInterTalentRequest(
   input: CreateInterTalentRequestInput
-) {
+): Promise<CaptureInterTalentRequestResult> {
   // Step 1 - Capture the request
   const request = await db.createInterTalentRequest(input);
 
@@ -16,47 +27,52 @@ export async function captureInterTalentRequest(
     eventType: "Request Created",
   });
 
+  let office: OfficeRoutingResult | null = null;
+
   // Step 3 - Resolve routing office
   if (input.location) {
-    const office = await resolveOffice(input.location);
+    office = await resolveOffice(input.location);
 
     if (office) {
-
-      // TODO:
-      // Determine office hours and routing status.
-      // For MVP, requests default to Notified.
-      // Future deliverable will populate:
-      //   - OfficeIsOpenAtSubmission
-      //   - NextOfficeOpenDateTime
-      //   - Status ('After Hours' when appropriate)
-
-      
-      // Step 4 - Persist routing information
-      await db.updateInterTalentRequestRouting({
+      await db.applyInterTalentRouting({
         requestId: request.requestId,
-
-        assignedOffice: office.officeName,
-        market: office.division,
-        region: office.region,
-        distributionList: office.officeEmail,
-
-        officeIsOpen: false,          // SLA Engine will determine this later
-        nextOfficeOpenDateTime: null, // SLA Engine will populate later
-
-        status: "Notified",
+        officeName: office.officeName,
       });
 
-      // Step 5 - Audit routing completion
       await db.createRequestEvent({
         requestId: request.requestId,
         eventType: "Routing Completed",
         metadata: {
           office: office.officeName,
+          division: office.division,
           region: office.region,
+          distanceMiles: office.distanceMiles,
         },
       });
     }
   }
-  // Step 6 - Return the new request
-  return request;
+
+  // Routing failed or no location was supplied
+  if (!office) {
+    return {
+      requestId: request.requestId,
+      officeId: null,
+      officeName: null,
+      officeEmail: null,
+      division: null,
+      region: null,
+      status: request.status,
+    };
+  }
+
+  // Successful routing
+  return {
+    requestId: request.requestId,
+    officeId: office.officeId,
+    officeName: office.officeName,
+    officeEmail: office.officeEmail,
+    division: office.division,
+    region: office.region,
+    status: "Notified",
+  };
 }

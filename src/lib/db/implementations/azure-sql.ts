@@ -5,7 +5,7 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, UpdateInterTalentRequestRoutingInput } from '../interface';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, ApplyInterTalentRoutingInput,ApplyInterTalentRoutingResult, } from '../interface';
 import type { Ad } from '@/types/ad';
 import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
 
@@ -1089,8 +1089,8 @@ export class AzureSqlDatabase implements IDatabase {
           `);
   }
 
-  async updateInterTalentRequestRouting(
-      data: UpdateInterTalentRequestRoutingInput
+  async applyInterTalentRouting(
+      data: ApplyInterTalentRoutingInput
   ): Promise<void> {
 
       const pool = await this.getConnection();
@@ -1098,41 +1098,13 @@ export class AzureSqlDatabase implements IDatabase {
       await pool.request()
 
           .input("requestId", sql.UniqueIdentifier, data.requestId)
-          .input("assignedOffice", sql.NVarChar(200), data.assignedOffice)
-          .input("market", sql.NVarChar(200), data.market ?? null)
-          .input("region", sql.NVarChar(200), data.region ?? null)
-          .input("distributionList", sql.NVarChar(254), data.distributionList ?? null)
-
-          .input("officeIsOpen", sql.Bit, data.officeIsOpen)
-          .input(
-              "nextOfficeOpenDateTime",
-              sql.DateTime2,
-              data.nextOfficeOpenDateTime ?? null
-          )
-
-          .input(
-              "status",
-              sql.NVarChar(200),
-              data.status ?? "Notified"
-          )
-
+          .input("officeName", sql.NVarChar(200), data.officeName)
           .query(`
-              UPDATE dbo.InterTalentRequests
-              SET
+            EXEC dbo.usp_ApplyInterTalentRouting
 
-                  AssignedOffice = @assignedOffice,
-                  Market = @market,
-                  Region = @region,
-                  DistributionList = @distributionList,
+                @RequestID = @requestId,
 
-                  OfficeIsOpenAtSubmission = @officeIsOpen,
-                  NextOfficeOpenDateTime = @nextOfficeOpenDateTime,
-
-                  Status = @status,
-
-                  UpdatedAt = SYSUTCDATETIME()
-
-              WHERE RequestID = @requestId
+                @OfficeName = @officeName
           `);
   }
 
