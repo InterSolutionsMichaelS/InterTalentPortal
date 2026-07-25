@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import RequestTalentModal from '@/components/modals/RequestTalentModal';
 import { trackEvent } from '@/lib/analytics/trackEvent';
+import { useSearchParams } from 'next/navigation';
 
 
 interface InjectTalentModalProps {
@@ -15,6 +16,15 @@ interface InjectTalentModalProps {
 export default function InjectTalentModal({ children, location, }: InjectTalentModalProps) {
   const [open, setOpen] = useState(false);
   const [associateId, setAssociateId] = useState<string | undefined>(location);
+
+  const searchParams = useSearchParams();
+
+  const effectiveLocation =
+    location ??
+    searchParams.get('location') ??
+    searchParams.get('address') ??
+    searchParams.get('zip') ??
+    undefined;
   
   // 🔑 Deep-link support from email
   useEffect(() => {
@@ -36,7 +46,7 @@ export default function InjectTalentModal({ children, location, }: InjectTalentM
               eventType: 'talent_request_open',
               page: 'Home',
               component: 'InjectTalentModal',
-              value: location ?? 'unknown',
+              value: effectiveLocation ?? 'unknown',
             });
 
             setOpen(true);
@@ -68,7 +78,7 @@ export default function InjectTalentModal({ children, location, }: InjectTalentM
 
       {open && (
         <RequestTalentModal
-          location={location}
+          location={effectiveLocation}
           onClose={() => setOpen(false)}
         />
       )}

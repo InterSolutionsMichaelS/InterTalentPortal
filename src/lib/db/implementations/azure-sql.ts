@@ -5,9 +5,10 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, ApplyInterTalentRoutingInput,ApplyInterTalentRoutingResult, } from '../interface';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, ApplyInterTalentRoutingInput,ApplyInterTalentRoutingResult, InterTalentRequestHeader, PendingWorkflowAction, RecordWorkflowActionInput} from '../interface';
 import type { Ad } from '@/types/ad';
 import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
+import type { InterTalentNotificationEmailParams } from '@/lib/email/send-email';
 
 const ADS_TABLE =
   process.env.AZURE_SQL_ADS_TABLE || 'dbo.Ads';
@@ -964,6 +965,12 @@ export class AzureSqlDatabase implements IDatabase {
 
           .input("startDate", sql.Date, data.startDate ?? null)
 
+          .input("startTime", sql.NVarChar(20), data.startTime ?? null)
+
+          .input("endTime", sql.NVarChar(20), data.endTime ?? null)
+
+          .input("campaign", sql.NVarChar(200), data.campaign ?? null)
+
           .input("notes", sql.NVarChar(sql.MAX), data.notes ?? null)
 
           .input("assignedOffice", sql.NVarChar(200), data.assignedOffice ?? null)
@@ -991,6 +998,9 @@ export class AzureSqlDatabase implements IDatabase {
                 JobType,
                 ShiftDetails,
                 StartDate,
+                StartTime,
+                EndTime,
+                Campaign,
                 Notes,
 
                 AssignedOffice,
@@ -1022,6 +1032,9 @@ export class AzureSqlDatabase implements IDatabase {
                 @jobType,
                 @shiftDetails,
                 @startDate,
+                @startTime,
+                @endTime,
+                @campaign,
                 @notes,
 
                 @assignedOffice,
@@ -1091,24 +1104,159 @@ export class AzureSqlDatabase implements IDatabase {
 
   async applyInterTalentRouting(
       data: ApplyInterTalentRoutingInput
+  ): Promise<ApplyInterTalentRoutingResult> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+        .input("requestId", sql.UniqueIdentifier, data.requestId)
+        .input("officeName", sql.NVarChar(200), data.officeName)
+        .query(`
+            EXEC dbo.usp_ApplyInterTalentRouting
+                @RequestID = @requestId,
+                @OfficeName = @officeName
+        `);
+
+    return result.recordset[0];
+  }
+
+  async getPendingWorkflowActions(): Promise<PendingWorkflowAction[]> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request().query(`
+          EXEC dbo.usp_GetInterTalentPendingActions
+      `);
+
+      return result.recordset.map(row => ({
+          requestId: row.RequestID,
+          actionType: row.ActionType,
+          status: row.Status,
+          portalSource: row.PortalSource,
+          assignedOffice: row.AssignedOffice,
+          division: row.Division,
+          region: row.Region,
+          distributionList: row.DistributionList,
+          customerName: row.CustomerName,
+          customerEmail: row.CustomerEmail,
+          associateName: row.AssociateName,
+          jobType: row.JobType,
+          actionDueDateUTC: row.ActionDueDateUTC,
+          responseBusinessMinutes: row.ResponseBusinessMinutes,
+          slaStatus: row.SLAStatus,
+          acknowledgementToken: row.AcknowledgementToken,
+      }));
+
+  }
+
+  async recordWorkflowAction(
+      input: RecordWorkflowActionInput
   ): Promise<void> {
 
       const pool = await this.getConnection();
 
       await pool.request()
 
-          .input("requestId", sql.UniqueIdentifier, data.requestId)
-          .input("officeName", sql.NVarChar(200), data.officeName)
+          .input(
+              "requestId",
+              sql.UniqueIdentifier,
+              input.requestId
+          )
+
+          .input(
+              "actionType",
+              sql.NVarChar(50),
+              input.actionType
+          )
+
           .query(`
-            EXEC dbo.usp_ApplyInterTalentRouting
-
-                @RequestID = @requestId,
-
-                @OfficeName = @officeName
+              EXEC dbo.usp_RecordInterTalentWorkflowAction
+                  @RequestID = @requestId,
+                  @ActionType = @actionType
           `);
+
+  }
+
+  public async getEscalationRecipients(
+      requestId: string,
+      includeRVP: boolean,
+      includeDOS: boolean
+  ): Promise<string> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+            SELECT
+                o.NotificationEmails,
+
+                COALESCE(
+                    STRING_AGG(
+                        CASE
+                            WHEN e.EscalationRole = 'RVP'
+                            THEN e.EmailAddress
+                        END,
+                        ';'
+                    ),
+                    ''
+                ) AS RVPEmails,
+
+                COALESCE(
+                    STRING_AGG(
+                        CASE
+                            WHEN e.EscalationRole = 'DoS'
+                            THEN e.EmailAddress
+                        END,
+                        ';'
+                    ),
+                    ''
+                ) AS DOSEmails
+
+            FROM dbo.InterTalentRequests r
+
+            JOIN dbo.Offices o
+                ON o.OfficeName = r.AssignedOffice
+
+            LEFT JOIN dbo.EscalationEmailList e
+                ON e.IsActive = 1
+              AND (
+                    (
+                        e.EscalationRole = 'RVP'
+                        AND e.Region = o.Region
+                    )
+                    OR
+                    e.EscalationRole = 'DoS'
+              )
+
+            WHERE r.RequestID = @requestId
+
+            GROUP BY
+                o.NotificationEmails;
+          `);
+
+        const row = result.recordset[0];
+
+        if (!row) {
+          return "";
+        }
+
+        return [
+          row.NotificationEmails,
+          includeRVP ? row.RVPEmails : null,
+          includeDOS ? row.DOSEmails : null
+        ]
+          .filter((value): value is string =>
+            typeof value === "string" &&
+            value.trim() !== ""
+          )
+          .join(";");
+
+      
   }
 
   async createStaffingRequest(data: {
+    requestId: string;
     officeId: number;
     officeName: string;
     officeEmail: string;
@@ -1137,6 +1285,7 @@ export class AzureSqlDatabase implements IDatabase {
     const pool = await this.getConnection();
 
     await pool.request()
+      .input('requestId', sql.UniqueIdentifier, data.requestId)
       .input('officeId', sql.Int, data.officeId)
       .input('officeName', sql.NVarChar(100), data.officeName)
       .input('officeEmail', sql.NVarChar(255), data.officeEmail)
@@ -1164,6 +1313,7 @@ export class AzureSqlDatabase implements IDatabase {
 
       .query(`
         INSERT INTO StaffingRequests (
+          RequestID,
           SubmittedAt,
           OfficeId,
           OfficeName,
@@ -1187,6 +1337,7 @@ export class AzureSqlDatabase implements IDatabase {
           ContactTitle
         )
         VALUES (
+          @requestId,
           GETDATE(),
           @officeId,
           @officeName,
@@ -1263,6 +1414,153 @@ export class AzureSqlDatabase implements IDatabase {
       };
     });
   }
+
+  async getRequestHeader(
+      requestId: string
+  ): Promise<InterTalentRequestHeader | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+                  RequestID,
+                  PortalSource,
+                  AssignedOffice,
+                  DistributionList,
+                  OfficeIsOpenAtSubmission
+              FROM dbo.InterTalentRequests
+              WHERE RequestID=@requestId
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  async getTalentNotificationContext(
+      requestId: string
+  ): Promise<InterTalentNotificationEmailParams | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+
+                  DistributionList    AS toEmail,
+
+                  'Associate/Talent Request' AS requestType,
+
+                  AssignedOffice      AS officeName,
+
+                  RequestID             AS requestId,
+                  AcknowledgementToken  AS acknowledgementToken,
+
+                  AssociateName       AS profileName,
+                  AssociateID         AS personId,
+
+                  Location            AS location,
+
+                  CustomerName        AS requesterName,
+                  CustomerEmail       AS requesterEmail,
+                  CustomerPhone       AS requesterPhone,
+
+                  Notes               AS comment,
+
+                  Campaign            AS campaign,
+
+                  StartDate           AS startDate,
+                  StartTime           AS startTime,
+                  EndTime             AS endTime,
+
+                  Property            AS propertyName,
+
+                  StrategicClientName AS strategicAccount
+
+              FROM dbo.InterTalentRequests
+              WHERE RequestID = @requestId;
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  async getStaffingNotificationContext(
+      requestId: string
+  ): Promise<InterTalentNotificationEmailParams | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+
+                  r.DistributionList  AS toEmail,
+
+                  'Staffing Request'  AS requestType,
+
+                  r.AssignedOffice    AS officeName,
+
+                  r.RequestID            AS requestId,
+                  r.AcknowledgementToken AS acknowledgementToken,
+
+                  s.ManagementCompany AS managementCompany,
+                  s.PropertyName      AS propertyName,
+                  s.StreetAddress     AS streetAddress,
+                  s.City              AS city,
+                  s.State             AS state,
+
+                  s.PositionType      AS positionType,
+                  s.PositionTitle     AS positionTitle,
+                  s.Duties            AS duties,
+
+                  s.StartDate         AS startDate,
+                  s.Schedule          AS schedule,
+
+                  s.ContactTitle      AS contactTitle,
+                  s.FirstName         AS firstName,
+                  s.LastName          AS lastName,
+                  s.Phone             AS phone,
+                  s.Email             AS email,
+                  s.ContactMethod     AS contactMethod,
+                  s.BestTimeToRespond AS bestTimeToRespond
+
+              FROM dbo.StaffingRequests s
+              JOIN dbo.InterTalentRequests r
+                  ON r.RequestID = s.RequestID
+              WHERE s.RequestID = @requestId;
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  async recordInitialNotification(
+      data: {
+          requestId: string;
+          recipientEmail: string;
+      }
+  ): Promise<void> {
+
+      const pool = await this.getConnection();
+
+      await pool.request()
+
+          .input(
+              "requestId",
+              sql.UniqueIdentifier,
+              data.requestId
+          )
+
+          .query(`
+              UPDATE dbo.InterTalentRequests
+              SET
+                  FirstNotificationSentDateTimeUTC = SYSUTCDATETIME(),
+                  UpdatedAt = SYSUTCDATETIME()
+              WHERE RequestID = @requestId
+          `);
+  }
+
 
   async insertAnalyticsEvent(
     event: AnalyticsEvent
@@ -1454,7 +1752,7 @@ export class AzureSqlDatabase implements IDatabase {
       WHERE Id = @id
     `);
   }
-
+  
   async getLocationSuggestion(
     query: string
   ): Promise<LocationSuggestion[]> {

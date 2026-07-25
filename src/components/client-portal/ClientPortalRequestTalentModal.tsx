@@ -20,6 +20,7 @@ interface ClientPortalRequestTalentModalProps {
   contactEmail?: string;
   contactPhone?: string;
   personId?: string;
+
 }
 
 //added logic for contact name email and phone to be pulled through. 1/27/26 MS

@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
 
     setSubmitting(true);
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn('admin', {
         email: em,
         password,
         redirect: false,

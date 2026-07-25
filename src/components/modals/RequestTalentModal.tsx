@@ -95,8 +95,17 @@ export default function RequestTalentModal({
     e.preventDefault();
     setIsSubmitting(true);
     setStatus('idle');
+
+    console.log({
+        location,
+        requestMode: mode,
+    });
     
     try {
+
+      console.log("Location being submitted:", location);
+
+      // const res = await fetch(...)
       const res = await fetch('/api/request-talent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,7 +121,7 @@ export default function RequestTalentModal({
           personId: personId ?? null,
 
           location,
-          customerName: effectiveCustomerName,
+          customerName: formData.name || effectiveCustomerName,
         }),
       });
 
@@ -132,7 +141,7 @@ export default function RequestTalentModal({
       });
 
       setStatus('success');
-      setTimeout(() => {
+     setTimeout(() => {
         window.location.href = 'https://intertalent.intersolutions.com';
       }, 1200);
     } catch (err) {

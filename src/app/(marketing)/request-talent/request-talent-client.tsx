@@ -43,7 +43,12 @@ useEffect(() => {
           onClose={() => setOpen(false)}
 
           // existing
-          location={searchParams.get('location') ?? undefined}
+          location={
+            searchParams.get('location') ??
+            searchParams.get('address') ??
+            searchParams.get('zip') ??
+            undefined
+          }
           associateId={searchParams.get('associateId') ?? undefined}
           associateName={searchParams.get('associateName') ?? undefined}
 

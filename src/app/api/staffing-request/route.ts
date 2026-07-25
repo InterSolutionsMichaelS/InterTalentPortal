@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { captureInterTalentRequest }
     from "@/lib/services/interTalentRequestService";
-import {
-    notifyStaffingRequest
-} from "@/lib/services/notificationService";
+import { processInitialNotification }
+    from "@/lib/services/requestNotificationEngine";
+  import { sendAfterHoursCustomerEmail }
+    from "@/lib/email/send-email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,9 +55,7 @@ export async function POST(request: NextRequest) {
       jobType: positionTitle || positionType || null,
 
       shiftDetails:
-        [duties, schedule]
-          .filter(Boolean)
-          .join("\n") || null,
+         schedule || null,
 
       startDate: startDate || null,
 
@@ -76,6 +75,26 @@ export async function POST(request: NextRequest) {
       ]
         .filter(Boolean)
         .join("\n"),
+
+        staffingRequest: {
+            streetAddress,
+            city,
+            state,
+
+            positionType,
+            positionTitle,
+            duties,
+
+            contactTitle,
+            firstName,
+            lastName,
+
+            phone,
+            email,
+
+            contactMethod,
+            bestTimeToRespond,
+        },
     });
 
     if (!routing.officeEmail || !routing.officeName) {
@@ -88,44 +107,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await notifyStaffingRequest({
+    if (routing.status === "After Hours") {
+      try {
+        const customerEmailResult = await sendAfterHoursCustomerEmail({
+          toEmail: email,
 
-        toEmail: routing.officeEmail,
+          contactFirstName: firstName,
+          contactLastName: lastName,
 
-        officeName: routing.officeName,
+          customerName:
+            managementCompany ??
+            propertyName,
 
-        managementCompany,
-        propertyName,
+          propertyName,
+          officeName: routing.officeName,
 
-        streetAddress,
-        city,
-        state,
+          positionType,
+          positionTitle,
 
-        positionType,
-        positionTitle,
-        duties,
+          startDate,
+          schedule,
+        });
 
-        startDate,
-        schedule,
-
-        contactTitle,
-        firstName,
-        lastName,
-        phone,
-        email,
-
-        contactMethod,
-        bestTimeToRespond,
-    });
+        if (!customerEmailResult.success) {
+          console.error(
+            "After-hours customer email failed:",
+            customerEmailResult.error
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Unexpected after-hours email failure:",
+          error
+        );
+      }
+    } else {
+      await processInitialNotification(routing.requestId);
+    }
 
     return NextResponse.json({
-        success: true,
+      success: true,
 
-        officeId: routing.officeId,
+      requestId: routing.requestId,
+      status: routing.status,
 
-        officeName: routing.officeName,
-
-        officeEmail: routing.officeEmail,
+      officeId: routing.officeId,
+      officeName: routing.officeName,
+      officeEmail: routing.officeEmail,
     });
   } catch (error) {
     console.error('Staffing request error:', error);

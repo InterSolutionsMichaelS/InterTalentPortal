@@ -1,40 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { captureInterTalentRequest }
     from "@/lib/services/interTalentRequestService";
-import {
-  notifyOfficeOfTalentRequest,
-  notifyUnavailable,
-} from "@/lib/services/notificationService";
-import { db } from "@/lib/db";
+import { processInitialNotification }
+  from "@/lib/services/requestNotificationEngine";
+import { sendAfterHoursCustomerEmail }
+  from "@/lib/email/send-email";
 
 
-    const STRATEGIC_ACCOUNT_SLUGS = [
-      { name: 'Avenue5 Residential', slug: 'avenue5' },
-      { name: 'Elmington Property Management', slug: 'elmington' },
-      { name: 'RPM Living', slug: 'rpm' },
-      { name: 'Asset Living', slug: 'assetliving' },
-      { name: 'Greystar', slug: 'greystar' },
-      { name: 'Resprop Management', slug: 'resprop' },
-      { name: 'Bedrock', slug: 'bedrock' },
-      { name: 'GoldOller', slug: 'goldoller'},
-    ];
+    const STRATEGIC_ACCOUNTS: Record<string, string> = {
+      avenue5: "Avenue5 Residential",
+      elmington: "Elmington Property Management",
+      rpm: "RPM Living",
+      assetliving: "Asset Living",
+      greystar: "Greystar",
+      resprop: "Resprop Management",
+      bedrock: "Bedrock",
+      goldoller: "GoldOller",
+    };
 
-    function getStrategicAccount(customerName?: string): string | null {
-      if (!customerName) return null;
-
-      const normalized = customerName.toLowerCase().replace(/\s+/g, '');
-
-      for (const account of STRATEGIC_ACCOUNT_SLUGS) {
-        if (normalized.includes(account.slug)) {
-          return account.name;
-        }
-      }
-
-      return null;
-    }
+    
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const hostname = req.nextUrl.hostname.toLowerCase();
+
+    const slug = hostname.split(".")[0];
+
+    const strategicAccount =
+      STRATEGIC_ACCOUNTS[slug] ?? null;
+
+    console.log("Hostname:", hostname);
+    console.log("Strategic Account:", strategicAccount);
 
     const {
       name,
@@ -57,6 +54,9 @@ export async function POST(req: NextRequest) {
     } = body || {};
 
     console.log("API customerName:", customerName);
+    console.log("API name:", name);
+    console.log("API propertyName:", propertyName);
+    console.log(body);
 
     // Base validation (applies to all modes)
     if (!name || !email || !notes) {
@@ -73,8 +73,6 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    const strategicAccount = getStrategicAccount(customerName);
 
 
     const request = await captureInterTalentRequest({
@@ -112,137 +110,95 @@ export async function POST(req: NextRequest) {
             startTime,
             endTime,
         ]
-            .filter(Boolean)
-            .join(" - "),
+        .filter(Boolean)
+        .join(" - "),
 
         startDate,
+        startTime,
+        endTime,
+
+        campaign,
 
         notes,
 
     });
 
-    // Default recipient (used for GENERIC / UNAVAILABLE)
-    let toEmail = "info@intersolutions.com";
+    if (request.status === "After Hours") {
 
-    if (location) {
       try {
-        const result = await db.getLocationEmail(location);
-        if (result?.email) {
-          toEmail = result.email;
-        }
-      } catch {
-        console.warn("Could not fetch location email, using fallback");
-      }
-    }
 
-    console.log("Incoming Talent Request", {
-      requestMode,
-      campaign,
-      associateId,
-      associateName,
-      personId,
-      name,
-      email,
-      phone,
-      location,
-      propertyName,
-      customerName,
-      strategicAccount,
-      startDate,
-      startTime,
-      endTime,
-      toEmail,
-    });
+        const customerEmailResult =
+          await sendAfterHoursCustomerEmail({
 
-    switch (requestMode) {
-      case "ASSOCIATE": {
-        if (!associateName) {
-          return NextResponse.json(
-            { error: "Associate name required for associate request" },
-            { status: 400 }
+            toEmail: email,
+
+            contactFirstName: name,
+
+            customerName:
+              customerName ??
+              propertyName,
+
+            propertyName,
+
+            officeName: request.officeName,
+
+            positionTitle:
+              associateName ??
+              requestMode,
+
+            startDate,
+
+            schedule: [
+              startTime,
+              endTime,
+            ]
+              .filter(Boolean)
+              .join(" - "),
+          });
+
+        if (!customerEmailResult.success) {
+
+          console.error(
+            "After-hours customer email failed:",
+            customerEmailResult.error
           );
+
         }
 
-        // 🔑 Associate requests go through Contact email (office-aware)
-        await notifyOfficeOfTalentRequest({
-          toEmail, // office / branch email
-          profileName: associateName,
-          personId,
-          location: location || "Not specified",
-          requesterName: name,
-          requesterEmail: email,
-          requesterPhone: phone,
-          comment: notes,
+      }
+      catch (error) {
 
-          campaign,
-          requestMode,
-          customerName,
-          propertyName,
-          strategicAccount,
+        console.error(
+          "Unexpected after-hours email failure:",
+          error
+        );
 
-          startDate,
-          startTime,
-          endTime,
-        });
-
-        break;
       }
 
-      case "UNAVAILABLE": {
-        // Escalation path – no associate
-        await notifyUnavailable({
-          toEmail, // InterTalent / fallback inbox
-          requesterName: name,
-          requesterEmail: email,
-          requesterPhone: phone,
-          notes: `NO ASSOCIATES AVAILABLE\nCampaign: ${campaign ?? "N/A"}\n\n${notes}`,
+    }
+    else {
 
-          campaign,
-          requestMode,
-          customerName,
-          propertyName,
-          strategicAccount,
+      await processInitialNotification(
+        request.requestId
+      );
 
-          startDate,
-          startTime,
-          endTime,
-        });
-        break;
-      }
-
-      case "GENERIC":
-      default: {
-        // Generic staffing request
-        await notifyUnavailable({
-          toEmail,
-          requesterName: name,
-          requesterEmail: email,
-          requesterPhone: phone,
-          notes,
-
-          campaign,
-          requestMode,
-          customerName,
-          propertyName,
-          strategicAccount,
-
-          startDate,
-          startTime,
-          endTime,
-        });
-        break;
-      }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Talent request submitted",
+      requestId: request.requestId,
+      status: request.status,
+      officeName: request.officeName,
+      officeEmail: request.officeEmail,
     });
-  } catch (error) {
-    console.error("Talent Request API Error:", error);
-    return NextResponse.json(
-      { error: "Failed to submit request" },
-      { status: 500 }
-    );
-  }
+
+    } catch (error) {
+      console.error("Talent Request API Error:", error);
+
+      return NextResponse.json(
+        { error: "Failed to submit request" },
+        { status: 500 }
+      );
+    }
 }
+

@@ -3,6 +3,7 @@
  * This interface allows database operations without dependency on specific implementation
  */
 import type { Ad } from '@/types/ad';
+import {  InterTalentNotificationEmailParams } from '../email/send-email';
 /**
  * Profile type definition
  */
@@ -118,10 +119,34 @@ export interface CreateInterTalentRequestInput {
   jobType?: string | null;
   shiftDetails?: string | null;
   startDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  campaign?: string | null;
   notes?: string | null;
 
   assignedOffice?: string | null;
   distributionList?: string | null;
+
+  // Staffing Request only
+  staffingRequest?: {
+    streetAddress?: string;
+    city?: string;
+    state?: string;
+
+    positionType?: string;
+    positionTitle?: string;
+    duties?: string;
+
+    contactTitle?: string;
+    firstName?: string;
+    lastName?: string;
+
+    phone?: string;
+    email?: string;
+
+    contactMethod?: string;
+    bestTimeToRespond?: string;
+  };
 }
 
 export interface CreateInterTalentRequestResult {
@@ -157,22 +182,69 @@ export interface ApplyInterTalentRoutingInput {
 
 export interface ApplyInterTalentRoutingResult {
 
-    assignedOffice: string;
+    requestId: string;
+
+    officeId: number;
+
+    officeName: string;
+
+    officeEmail: string;
 
     division: string;
 
     region: string;
 
-    distributionList: string;
-
     officeIsOpen: boolean;
 
-    nextOfficeOpenDateTime?: Date | null;
+    nextOfficeOpenDateTime: Date | null;
 
     status: string;
+}
+
+export interface InterTalentRequestHeader {
+    requestId: string;
+    portalSource: string;
+    assignedOffice: string;
+    distributionList: string;
+    officeIsOpenAtSubmission: boolean;
+}
+
+
+
+export interface RecordInitialNotificationInput {
+    requestId: string;
+    recipientEmail: string;
+}
+
+export interface PendingWorkflowAction {
+
+    requestId: string;
+
+    actionType:
+        | "SEND_INITIAL_NOTIFICATION"
+        | "SEND_REMINDER"
+        | "SEND_RVP_ESCALATION"
+        | "SEND_DOS_ESCALATION";
+
+    portalSource: string;
+
+    distributionList: string;
 
 }
 
+
+export interface RecordWorkflowActionInput {
+
+    requestId: string;
+
+    actionType:
+        | "SEND_INITIAL_NOTIFICATION"
+        | "SEND_REMINDER"
+        | "SEND_RVP_ESCALATION"
+        | "SEND_DOS_ESCALATION";
+      
+
+}
 
 export interface OfficeRoutingInfo {
   Id: number;
@@ -267,9 +339,36 @@ export interface IDatabase {
 
   applyInterTalentRouting(
       data: ApplyInterTalentRoutingInput
+  ): Promise<ApplyInterTalentRoutingResult>;
+
+  getRequestHeader(
+    requestId: string
+  ): Promise<InterTalentRequestHeader | null>;
+
+  getStaffingNotificationContext(
+    requestId: string
+  ): Promise<InterTalentNotificationEmailParams | null>;
+
+  getTalentNotificationContext(
+    requestId: string
+  ): Promise<InterTalentNotificationEmailParams| null>;
+
+  getEscalationRecipients(
+      requestId: string,
+      includeRVP: boolean,
+      includeDOS: boolean
+  ): Promise<string>;
+
+  recordInitialNotification(
+    data: RecordInitialNotificationInput
   ): Promise<void>;
 
+  getPendingWorkflowActions(): Promise<PendingWorkflowAction[]>;
+
+  recordWorkflowAction(input: RecordWorkflowActionInput): Promise<void>;
+
   createStaffingRequest(data: {
+    requestId: string;
     officeId: number;
     officeName: string;
     officeEmail: string;
