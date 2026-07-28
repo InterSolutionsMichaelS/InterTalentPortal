@@ -24,11 +24,20 @@ export default function AcknowledgePage() {
     const [result, setResult] = useState<AcknowledgementResult | null>(null);
 
     useEffect(() => {
-        if (status === 'unauthenticated') {
-            signIn('azure-ad', {
+        async function authenticate() {
+            if (status !== 'unauthenticated') {
+                return;
+            }
+
+            const result = await signIn('azure-ad', {
                 callbackUrl: window.location.href,
+                redirect: false,
             });
+
+            console.log(result);
         }
+
+        authenticate();
     }, [status]);
 
     useEffect(() => {

@@ -37,6 +37,11 @@ export default function StaffingRequestModal({
     const [bestTimeToRespond, setBestTimeToRespond] = useState('');
 
     const [validationError, setValidationError] = useState('');
+    const [submitStatus, setSubmitStatus] = useState<
+    'success' | 'error' | null
+    >(null);
+
+    const [submitMessage, setSubmitMessage] = useState('');
 
     const handleSubmit = async () => {
         try {
@@ -92,18 +97,23 @@ export default function StaffingRequestModal({
 
             const routing = await response.json();
 
-            console.log(
-            'Routing Result:',
-            routing
-            );
+            if (!response.ok) {
+                throw new Error(routing.message ?? 'Submission failed.');
+            }
 
-            alert(
-            `Nearest Office: ${routing.officeName}`
-            );
+            setSubmitStatus('success');
+            setSubmitMessage('Success! Staffing request submitted.');
+
+            setTimeout(() => {
+                onClose();
+                setSubmitStatus(null);
+                setSubmitMessage('');
+            }, 1500);
         } catch (error) {
             console.error(error);
 
-            alert('Routing failed');
+            setSubmitStatus('error');
+            setSubmitMessage('Failed! Please try again.');
         }
     };
 
@@ -513,27 +523,42 @@ export default function StaffingRequestModal({
 
             </div>
         </div>
+    </div>
 
+        <div className="flex items-center justify-between border-t px-6 py-4">
+            <div className="min-h-[24px]">
+                {submitStatus && (
+                    <span
+                        className={`text-sm font-semibold ${
+                            submitStatus === 'success'
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                        }`}
+                    >
+                        {submitMessage}
+                    </span>
+                )}
+            </div>
+
+            <div className="flex gap-3">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-lg border border-gray-400 px-4 py-2"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="rounded-lg bg-[#FF30AF] px-4 py-2 font-semibold text-white"
+                >
+                    Submit Request
+                </button>
+            </div>
         </div>
-
-        <div className="flex justify-end gap-3 border-t px-6 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-gray-400 px-4 py-2"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="rounded-lg bg-[#FF30AF] px-4 py-2 font-semibold text-white"
-            >
-            Submit Request
-          </button>
-        </div>
-      </div>
+    </div>
     </div>
   );
 }

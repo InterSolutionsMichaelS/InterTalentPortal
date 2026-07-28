@@ -18,20 +18,34 @@ import { sendAfterHoursCustomerEmail }
       goldoller: "GoldOller",
     };
 
+
     
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const hostname = req.nextUrl.hostname.toLowerCase();
+    const hostname = (
+        req.headers.get("x-forwarded-host") ??
+        req.headers.get("host") ??
+        req.nextUrl.hostname
+    ).toLowerCase();
 
     const slug = hostname.split(".")[0];
 
     const strategicAccount =
       STRATEGIC_ACCOUNTS[slug] ?? null;
 
-    console.log("Hostname:", hostname);
-    console.log("Strategic Account:", strategicAccount);
+    console.log({
+        hostname,
+        slug,
+        strategicAccount,
+    });
+
+    console.log("nextUrl.hostname:", req.nextUrl.hostname);
+
+    console.log("Host header:", req.headers.get("host"));
+
+    console.log("X-Forwarded-Host:", req.headers.get("x-forwarded-host"));
 
     const {
       name,
