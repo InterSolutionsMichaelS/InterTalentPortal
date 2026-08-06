@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth-options";
 import sql from "mssql";
 import { getPool } from "@/lib/db/clients/azure-sql"
+import { sendOwnershipConfirmedEmail } from "@/lib/email/send-email";
+import { db } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
     const body = await request.json();
@@ -55,7 +57,27 @@ export async function POST(request: NextRequest) {
             .input("UserAgent", sql.NVarChar(sql.MAX), request.headers.get("user-agent"))
             .execute("dbo.usp_InterTalent_AcknowledgeOwnership");
 
-        return NextResponse.json(result.recordset[0]);
+        const acknowledgement = result.recordset[0];
+
+        if (!acknowledgement) {
+            throw new Error(
+                "Acknowledgement stored procedure returned no result."
+            );
+        }
+
+        if (acknowledgement.Result === "Acknowledged") {
+
+            const emailContext =
+                await db.getOwnershipConfirmationContext(requestId);
+
+            if (emailContext) {
+                await sendOwnershipConfirmedEmail(emailContext);
+            }
+        }
+
+        return NextResponse.json(acknowledgement);
+
+
 
     } catch (error) {
 
@@ -71,4 +93,6 @@ export async function POST(request: NextRequest) {
             }
         );
     }
+
+
 }

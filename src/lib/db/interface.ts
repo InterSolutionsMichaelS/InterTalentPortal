@@ -3,7 +3,7 @@
  * This interface allows database operations without dependency on specific implementation
  */
 import type { Ad } from '@/types/ad';
-import {  InterTalentNotificationEmailParams } from '../email/send-email';
+import {  InterTalentNotificationEmailParams, CustomerRequestStatusEmailParams } from '../email/send-email';
 /**
  * Profile type definition
  */
@@ -352,6 +352,17 @@ export interface IDatabase {
   getTalentNotificationContext(
     requestId: string
   ): Promise<InterTalentNotificationEmailParams| null>;
+
+  getOwnershipConfirmationContext(
+    requestId: string
+  ): Promise<CustomerRequestStatusEmailParams | null>;
+
+  getStrategicProperty(
+      propertyId: number
+  ): Promise<{
+      company: string;
+      property: string;
+  } | null>;
 
   getEscalationRecipients(
       requestId: string,

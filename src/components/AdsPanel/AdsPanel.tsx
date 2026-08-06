@@ -38,9 +38,6 @@ export default function AdsPanel({
 
       const data = await response.json();
 
-      console.log('TARGET ACCOUNT:', targetAccount);
-      console.log('ADS FROM API:', data);
-
       const filteredAds = data.filter((ad: Ad) => {
         const targets = (ad.targetAccounts ?? []).map(
           (x: string) => x.toLowerCase()
@@ -51,9 +48,7 @@ export default function AdsPanel({
           targets.includes(targetAccount.toLowerCase())
         );
       });
-
-      console.log('FILTERED ADS:', filteredAds);
-
+      
       setAds(filteredAds);
       setCurrent(0);
     } catch (error) {

@@ -34,7 +34,6 @@ export default function AcknowledgePage() {
                 redirect: false,
             });
 
-            console.log(result);
         }
 
         authenticate();
@@ -67,8 +66,6 @@ export default function AcknowledgePage() {
                 });
 
                 const data = await response.json();
-
-                console.log(data);
 
                 setResult(data);
             } catch (error) {

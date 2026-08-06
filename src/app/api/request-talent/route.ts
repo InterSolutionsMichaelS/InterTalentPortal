@@ -5,6 +5,8 @@ import { processInitialNotification }
   from "@/lib/services/requestNotificationEngine";
 import { sendAfterHoursCustomerEmail }
   from "@/lib/email/send-email";
+import { db } from "@/lib/db";
+
 
 
     const STRATEGIC_ACCOUNTS: Record<string, string> = {
@@ -35,18 +37,6 @@ export async function POST(req: NextRequest) {
     const strategicAccount =
       STRATEGIC_ACCOUNTS[slug] ?? null;
 
-    console.log({
-        hostname,
-        slug,
-        strategicAccount,
-    });
-
-    console.log("nextUrl.hostname:", req.nextUrl.hostname);
-
-    console.log("Host header:", req.headers.get("host"));
-
-    console.log("X-Forwarded-Host:", req.headers.get("x-forwarded-host"));
-
     const {
       name,
       email,
@@ -65,12 +55,8 @@ export async function POST(req: NextRequest) {
       campaign,
       customerName,
       propertyName,
+      propertyId,
     } = body || {};
-
-    console.log("API customerName:", customerName);
-    console.log("API name:", name);
-    console.log("API propertyName:", propertyName);
-    console.log(body);
 
     // Base validation (applies to all modes)
     if (!name || !email || !notes) {
@@ -88,6 +74,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const strategicProperty =
+      propertyId
+          ? await db.getStrategicProperty(propertyId)
+          : null;
+
 
     const request = await captureInterTalentRequest({
 
@@ -104,9 +95,16 @@ export async function POST(req: NextRequest) {
 
         customerPhone: phone,
 
-        company: customerName,
+        company:
+            strategicProperty?.company ??
+            strategicAccount ??
+            customerName ??
+            null,
 
-        property: propertyName,
+        property:
+            strategicProperty?.property ??
+            propertyName ??
+            null,
 
         location,
 
@@ -149,10 +147,12 @@ export async function POST(req: NextRequest) {
             contactFirstName: name,
 
             customerName:
-              customerName ??
-              propertyName,
+                strategicProperty?.company ??
+                customerName,
 
-            propertyName,
+            propertyName:
+                strategicProperty?.property ??
+                propertyName,
 
             officeName: request.officeName,
 

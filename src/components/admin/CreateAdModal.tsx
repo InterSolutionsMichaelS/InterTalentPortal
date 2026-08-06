@@ -38,12 +38,6 @@ export function CreateAdModal({
         (client: { slug: string }) => client.slug
       )
     );
-
-    console.log(
-      result.data.map(
-        (client: { slug: string }) => client.slug
-      )
-    );
   };
 
   if (!isOpen) return null;
@@ -90,8 +84,6 @@ export function CreateAdModal({
 
         return;
     }
-
-    console.log('Ad created successfully');
 
     handleClose();
     window.location.reload();

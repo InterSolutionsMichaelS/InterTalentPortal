@@ -8,6 +8,7 @@ import { highlightKeywords } from '@/utils/highlightText';
 import { trackEvent } from '@/lib/analytics/trackEvent';
 import { useSearchParams } from "next/navigation"; //added on 6/25/26 for request talent button to include more data
 
+
 interface ProfileCardProps {
   profile: Profile;
   variant?: 'grid' | 'list';
@@ -26,6 +27,11 @@ export default function ProfileCard({
 };
 
   const searchParams = useSearchParams();
+
+  const requestLocation =
+    searchParams.get("address") ??
+    searchParams.get("location") ??
+    searchParams.get("zip");
 
   const propertyName =
     searchParams.get("propertyName") ??
@@ -274,7 +280,11 @@ export default function ProfileCard({
             onClose={() => setIsRequestModalOpen(false)}
 
             // context from profile
-            location={profile.office ?? undefined}
+            location={
+                requestLocation ??
+                profile.office ??
+                undefined
+            }
             associateId={profile.id}
             associateName={`${profile.first_name} ${profile.last_initial}.`}
             personId={profile.id}
@@ -431,7 +441,11 @@ export default function ProfileCard({
           onClose={() => setIsRequestModalOpen(false)}
 
           // context from profile
-          location={profile.office ?? undefined}
+          location={
+              requestLocation ??
+              profile.office ??
+              undefined
+          }
           associateId={profile.id}
           associateName={`${profile.first_name} ${profile.last_initial}.`}
           personId={profile.id}

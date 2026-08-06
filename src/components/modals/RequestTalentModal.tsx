@@ -96,14 +96,9 @@ export default function RequestTalentModal({
     setIsSubmitting(true);
     setStatus('idle');
 
-    console.log({
-        location,
-        requestMode: mode,
-    });
+
     
     try {
-
-      console.log("Location being submitted:", location);
 
       // const res = await fetch(...)
       const res = await fetch('/api/request-talent', {

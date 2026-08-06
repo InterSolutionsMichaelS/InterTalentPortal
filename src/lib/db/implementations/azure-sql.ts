@@ -5,10 +5,10 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, ApplyInterTalentRoutingInput,ApplyInterTalentRoutingResult, InterTalentRequestHeader, PendingWorkflowAction, RecordWorkflowActionInput} from '../interface';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, ApplyInterTalentRoutingInput,ApplyInterTalentRoutingResult, InterTalentRequestHeader, PendingWorkflowAction, RecordWorkflowActionInput } from '../interface';
 import type { Ad } from '@/types/ad';
 import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
-import type { InterTalentNotificationEmailParams } from '@/lib/email/send-email';
+import type { InterTalentNotificationEmailParams, CustomerRequestStatusEmailParams } from '@/lib/email/send-email';
 
 const ADS_TABLE =
   process.env.AZURE_SQL_ADS_TABLE || 'dbo.Ads';
@@ -1175,6 +1175,74 @@ export class AzureSqlDatabase implements IDatabase {
                   @ActionType = @actionType
           `);
 
+  }
+
+  async getOwnershipConfirmationContext(
+      requestId: string
+  ): Promise<CustomerRequestStatusEmailParams | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+                  r.PortalSource,
+                  r.CustomerEmail AS toEmail,
+                  r.CustomerName AS customerName,
+
+                  COALESCE(
+                      s.PropertyName,
+                      r.Property
+                  ) AS propertyName,
+
+                  r.AssignedOffice AS officeName,
+
+                  COALESCE(
+                      s.PositionTitle,
+                      r.JobType
+                  ) AS positionTitle,
+
+                  COALESCE(
+                      CONVERT(nvarchar(30), s.StartDate, 23),
+                      CONVERT(nvarchar(30), r.StartDate, 23)
+                  ) AS startDate,
+
+                  COALESCE(
+                      s.Schedule,
+                      r.ShiftDetails
+                  ) AS schedule
+
+              FROM dbo.InterTalentRequests r
+
+              LEFT JOIN dbo.StaffingRequests s
+                  ON s.RequestID = r.RequestID
+
+              WHERE r.RequestID = @requestId;
+          `);
+
+      const row = result.recordset[0];
+
+      return row ?? null;
+  }
+
+  async getStrategicProperty(propertyId: number) {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("propertyId", sql.Int, propertyId)
+          .query(`
+              SELECT
+                  c.Name AS company,
+                  p.Name AS property
+              FROM dbo.properties p
+              INNER JOIN dbo.clients c
+                  ON c.Id = p.client_Id
+              WHERE p.Id = @propertyId
+          `);
+
+      return result.recordset[0] ?? null;
   }
 
   public async getEscalationRecipients(

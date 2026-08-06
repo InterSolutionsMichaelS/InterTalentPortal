@@ -566,26 +566,19 @@ function buildAfterHoursCustomerHtml(
 
     <p>
 
-        Thank you for contacting InterSolutions.
+        Thank you for requesting talent from InterSolutions!
 
     </p>
 
     <p>
 
-        Our <strong>${officeName}</strong> office is currently closed.
+        Your request was submitted outside of our <strong>${officeName}</strong> office hours. Our team will review your request and you can expect to hear from us during our next business day <strong>as soon as possible</strong>.
 
     </p>
 
     <p>
 
-        Your staffing request has been received successfully and will automatically
-        be routed to our team when the office opens.
-
-    </p>
-
-    <p style="margin-top:35px;">
-
-        No further action is required.
+        We appreciate your patience and look forward to assisting you!
 
     </p>
 
@@ -593,7 +586,7 @@ function buildAfterHoursCustomerHtml(
 
         Thank you,<br>
 
-        InterSolutions
+        The InterSolutions Team
 
     </p>
 

@@ -20,6 +20,7 @@ interface ClientPortalRequestTalentModalProps {
   contactEmail?: string;
   contactPhone?: string;
   personId?: string;
+  propertyId?: number | null;
 
 }
 
@@ -34,7 +35,8 @@ export default function ClientPortalRequestTalentModal({
   requestMode,
   contactName,
   contactEmail,
-  contactPhone
+  contactPhone,
+  propertyId,
 }: ClientPortalRequestTalentModalProps) {
   // 🔑 Single source of truth for behavior
   const mode: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE' =
@@ -93,6 +95,8 @@ export default function ClientPortalRequestTalentModal({
           associateId: associateId ?? null,
           associateName: associateName ?? null,
           personId: personId ?? null,
+
+          propertyId,
 
           location,
         }),

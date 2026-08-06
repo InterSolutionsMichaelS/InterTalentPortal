@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     const fullAddress =
       `${streetAddress}, ${city}, ${state}`;
 
+
     const routing = await captureInterTalentRequest({
       portalSource: "Staffing Request",
 

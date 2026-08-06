@@ -34,6 +34,8 @@ export default function ClientPortalProfileCard({
     return 'border-l-[var(--color-primary)]';
   };
 
+  const propertyId = useSearchStore((state) => state.propertyId);
+
   const colorClass = getColorClass(
     profile.profession_type || 'default',
     isExpanded
@@ -261,6 +263,8 @@ export default function ClientPortalProfileCard({
             associateName={`${profile.first_name} ${profile.last_initial}.`}
             personId={profile.id}
 
+            propertyId={propertyId}
+
             requestMode="ASSOCIATE"
             campaign="Generic"
           />
@@ -416,6 +420,8 @@ export default function ClientPortalProfileCard({
           associateId={profile.id}
           associateName={`${profile.first_name} ${profile.last_initial}.`}
           personId={profile.id}
+
+          propertyId={propertyId}
 
           requestMode="ASSOCIATE"
           campaign="Generic"
