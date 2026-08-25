@@ -5,6 +5,22 @@
 
 import nodemailer from 'nodemailer';
 
+const EMAILS_DISABLED =
+  process.env.DISABLE_INTERTALENT_EMAILS === "true";
+
+/** added on 8/25/26 to suppress localhost emails when set true*/
+function emailSuppressed(functionName: string, toEmail?: string) {
+  if (!EMAILS_DISABLED) {
+    return false;
+  }
+
+  console.warn(
+    `[EMAIL SUPPRESSED] ${functionName}`,
+    toEmail ? `Recipient would have been: ${toEmail}` : ""
+  );
+
+  return true;
+}
 
 function formatTimeTo12Hour(time?: string): string {
   if (!time) return "Not specified";
@@ -749,6 +765,14 @@ export interface InterTalentNotificationEmailParams {
 export async function sendInterTalentNotification(
   params: InterTalentNotificationEmailParams
 ): Promise<{ success: boolean; error?: string }> {
+
+  if (emailSuppressed(
+    "sendInterTalentNotification",
+    params.toEmail
+  )) {
+    return { success: true };
+  }
+
   const {
     toEmail,
     requestType,
@@ -864,6 +888,13 @@ export async function sendAfterHoursCustomerEmail(
   params: CustomerRequestStatusEmailParams
 ): Promise<{ success: boolean; error?: string }> {
   try {
+
+    if (emailSuppressed(
+      "sendAfterHoursCustomerEmail",
+      params.toEmail
+    )) {
+      return { success: true };
+    }
     const html = buildAfterHoursCustomerHtml(params);
 
     await transporter.sendMail({
@@ -893,6 +924,13 @@ export async function sendOwnershipConfirmedEmail(
   params: CustomerRequestStatusEmailParams
 ): Promise<{ success: boolean; error?: string }> {
   try {
+
+    if (emailSuppressed(
+      "sendOwnershipConfirmedEmail",
+      params.toEmail
+    )) {
+      return { success: true };
+    }
     const html = buildOwnershipConfirmedHtml(params);
 
     await transporter.sendMail({
@@ -1014,6 +1052,13 @@ export interface CustomerRequestStatusEmailParams {
 export async function sendTalentRequestEmail(
   params: TalentRequestEmailParams
 ): Promise<{ success: boolean; error?: string }> {
+
+  if (emailSuppressed(
+    "sendTalentRequestEmail",
+    params.toEmail
+  )) {
+    return { success: true };
+  }
   const { toEmail, requesterName, requesterEmail, requesterPhone, notes, campaign, requestMode, customerName, propertyName, strategicAccount, startDate, startTime, endTime, } = params;
 
   if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
@@ -1084,6 +1129,13 @@ export async function sendStaffingRequestEmail(
   params: StaffingRequestEmailParams
 ): Promise<{ success: boolean; error?: string }> {
 
+  if (emailSuppressed(
+    "sendStaffingRequestEmail",
+    params.toEmail
+  )) {
+    return { success: true };
+  }
+  
   const {
     toEmail,
     officeName,

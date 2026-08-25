@@ -33,7 +33,9 @@ export async function processInitialNotification(
     );
   }
 
-  if (header.portalSource === "Staffing Request") {
+  if (header.portalSource === "Staffing Request" || 
+      header.portalSource === "InterSolutions Website"
+  ) {
 
       const context =
           await db.getStaffingNotificationContext(requestId);
@@ -81,7 +83,10 @@ export async function sendReminder(
   }
 
   const context =
-    header.portalSource === "Staffing Request"
+    (
+        header.portalSource === "Staffing Request" ||
+        header.portalSource === "InterSolutions Website"
+    )
         ? await db.getStaffingNotificationContext(requestId)
         : await db.getTalentNotificationContext(requestId);
 
@@ -112,7 +117,10 @@ export async function sendRVPEscalation(
   }
 
   const context =
-    header.portalSource === "Staffing Request"
+    (
+        header.portalSource === "Staffing Request" ||
+        header.portalSource === "InterSolutions Website"
+    )
         ? await db.getStaffingNotificationContext(requestId)
         : await db.getTalentNotificationContext(requestId);
 
@@ -150,7 +158,10 @@ export async function sendDOSEscalation(
   }
 
   const context =
-    header.portalSource === "Staffing Request"
+    (
+        header.portalSource === "Staffing Request" ||
+        header.portalSource === "InterSolutions Website"
+    )
         ? await db.getStaffingNotificationContext(requestId)
         : await db.getTalentNotificationContext(requestId);
 

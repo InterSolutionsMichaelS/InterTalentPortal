@@ -32,14 +32,26 @@ export async function POST(request: NextRequest) {
 
       contactMethod,
       bestTimeToRespond,
+
+      portalSource,
     } = body;
+
+    /* added 8/25/26 to allow for two options of portal source site or strategic account*/
+    const resolvedPortalSource =
+      portalSource === "InterSolutions Website"
+        ? "InterSolutions Website"
+        : "Staffing Request";
 
     const fullAddress =
       `${streetAddress}, ${city}, ${state}`;
 
 
+    /* changed on 8/25/26 for source option of website or staffing request
     const routing = await captureInterTalentRequest({
-      portalSource: "Staffing Request",
+      portalSource: "Staffing Request",*/
+
+    const routing = await captureInterTalentRequest({
+      portalSource: resolvedPortalSource,
 
       customerName:
         managementCompany ??
