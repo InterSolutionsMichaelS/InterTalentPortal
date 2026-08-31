@@ -849,15 +849,16 @@ export async function sendInterTalentNotification(
   /*const TEST_NOTIFICATION_RECIPIENTS = [
       "mstiles@intersolutions.com",
       "ejenkins@intersolutions.com",
-      "mconway@intersolutions.com",
+      //"mconway@intersolutions.com",
       "mvrabel@intersolutions.com",
+      "emyket@intersolutions.com",
       // "someoneelse@intersolutions.com",
   ];*/
 
   try {
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: toEmail, // replace with after testing toEmail,
+      to:toEmail, /*TEST_NOTIFICATION_RECIPIENTS, // replace with after testing toEmail,*/
       replyTo: requesterEmail,
       subject,
       html,
@@ -1135,7 +1136,7 @@ export async function sendStaffingRequestEmail(
   )) {
     return { success: true };
   }
-  
+
   const {
     toEmail,
     officeName,

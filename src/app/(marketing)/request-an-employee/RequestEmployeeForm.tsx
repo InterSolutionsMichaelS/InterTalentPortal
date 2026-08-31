@@ -52,6 +52,30 @@ const initialFormData: FormData = {
   bestTimeToRespond: "",
 };
 
+async function trackAnalyticsEvent(
+  eventType: string,
+  value?: string,
+  metadata?: Record<string, unknown>
+) {
+  try {
+    await fetch("/api/analytics", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        eventType,
+        page: "/request-an-employee",
+        component: "RequestEmployeeForm",
+        value,
+        metadata,
+      }),
+    });
+  } catch (error) {
+    console.error("Analytics tracking failed:", error);
+  }
+}
+
 export default function RequestEmployeeForm() {
   const [formData, setFormData] =
     useState<FormData>(initialFormData);
@@ -70,6 +94,16 @@ export default function RequestEmployeeForm() {
 
     return () => window.clearTimeout(timer);
   }, [submitted]);
+
+  useEffect(() => {
+    void trackAnalyticsEvent(
+      "PageView",
+      "Request an Employee",
+      {
+        portalSource: "InterSolutions Website",
+      }
+    );
+  }, []);
 
   function updateField(
     field: keyof FormData,
@@ -105,9 +139,23 @@ export default function RequestEmployeeForm() {
         throw new Error("Unable to submit request.");
       }
 
+      void trackAnalyticsEvent(
+        "RequestSubmitted",
+        "InterSolutions Website",
+        {
+          positionType: formData.positionType,
+        }
+      );
+
       setSubmitted(true);
+
     } catch (err) {
       console.error("Request employee submission failed:", err);
+
+      void trackAnalyticsEvent(
+        "RequestSubmissionFailed",
+        "InterSolutions Website"
+      );
 
       setError(
         "We were unable to submit your request. Please try again."
@@ -184,12 +232,75 @@ export default function RequestEmployeeForm() {
           required
         />
 
-        <Input
-          label="State"
-          value={formData.state}
-          onChange={(value) => updateField("state", value)}
-          required
-        />
+        <div>
+          <label className="mb-2 block font-medium text-gray-700">
+            State
+            <span className="ml-1 text-red-600">*</span>
+          </label>
+
+          <select
+            value={formData.state}
+            required
+            onChange={(event) =>
+              updateField("state", event.target.value)
+            }
+            className="w-full rounded-lg border border-gray-600 bg-white px-4 py-3 text-gray-600 outline-none focus:border-blue-500"
+          >
+            <option value="">Select State</option>
+
+            <option value="AL">Alabama</option>
+            <option value="AK">Alaska</option>
+            <option value="AZ">Arizona</option>
+            <option value="AR">Arkansas</option>
+            <option value="CA">California</option>
+            <option value="CO">Colorado</option>
+            <option value="CT">Connecticut</option>
+            <option value="DE">Delaware</option>
+            <option value="FL">Florida</option>
+            <option value="GA">Georgia</option>
+            <option value="HI">Hawaii</option>
+            <option value="ID">Idaho</option>
+            <option value="IL">Illinois</option>
+            <option value="IN">Indiana</option>
+            <option value="IA">Iowa</option>
+            <option value="KS">Kansas</option>
+            <option value="KY">Kentucky</option>
+            <option value="LA">Louisiana</option>
+            <option value="ME">Maine</option>
+            <option value="MD">Maryland</option>
+            <option value="MA">Massachusetts</option>
+            <option value="MI">Michigan</option>
+            <option value="MN">Minnesota</option>
+            <option value="MS">Mississippi</option>
+            <option value="MO">Missouri</option>
+            <option value="MT">Montana</option>
+            <option value="NE">Nebraska</option>
+            <option value="NV">Nevada</option>
+            <option value="NH">New Hampshire</option>
+            <option value="NJ">New Jersey</option>
+            <option value="NM">New Mexico</option>
+            <option value="NY">New York</option>
+            <option value="NC">North Carolina</option>
+            <option value="ND">North Dakota</option>
+            <option value="OH">Ohio</option>
+            <option value="OK">Oklahoma</option>
+            <option value="OR">Oregon</option>
+            <option value="PA">Pennsylvania</option>
+            <option value="RI">Rhode Island</option>
+            <option value="SC">South Carolina</option>
+            <option value="SD">South Dakota</option>
+            <option value="TN">Tennessee</option>
+            <option value="TX">Texas</option>
+            <option value="UT">Utah</option>
+            <option value="VT">Vermont</option>
+            <option value="VA">Virginia</option>
+            <option value="WA">Washington</option>
+            <option value="WV">West Virginia</option>
+            <option value="WI">Wisconsin</option>
+            <option value="WY">Wyoming</option>
+            <option value="DC">District of Columbia</option>
+          </select>
+        </div>
       </div>
 
       <hr className="my-8" />
@@ -199,14 +310,42 @@ export default function RequestEmployeeForm() {
       </h2>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
-        <Input
-          label="Position Type"
-          value={formData.positionType}
-          onChange={(value) =>
-            updateField("positionType", value)
-          }
-          required
-        />
+        <div>
+          <label className="mb-3 block font-medium text-gray-700">
+            What type of position are you looking for?
+            <span className="ml-1 text-red-600">*</span>
+          </label>
+
+          <div className="space-y-2">
+            {[
+              "Temp",
+              "Temp to Perm",
+              "Direct Hire",
+              "JumpStart Payrolling",
+            ].map((option) => (
+              <label
+                key={option}
+                className="flex cursor-pointer items-center gap-2"
+              >
+                <input
+                  type="radio"
+                  name="positionType"
+                  value={option}
+                  checked={formData.positionType === option}
+                  onChange={(event) =>
+                    updateField("positionType", event.target.value)
+                  }
+                  required
+                  className="h-4 w-4"
+                />
+
+                <span className="text-gray-700">
+                  {option}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
 
         <Input
           label="Position Title"
@@ -229,6 +368,7 @@ export default function RequestEmployeeForm() {
         <Input
           label="Schedule"
           value={formData.schedule}
+          placeholder="Example: Monday-Friday, 8:00 AM-5:00 PM"
           onChange={(value) =>
             updateField("schedule", value)
           }
@@ -299,13 +439,35 @@ export default function RequestEmployeeForm() {
           required
         />
 
-        <Input
-          label="Preferred Contact Method"
-          value={formData.contactMethod}
-          onChange={(value) =>
-            updateField("contactMethod", value)
-          }
-        />
+        <div>
+          <label className="mb-3 block font-medium text-gray-700">
+            What is the best way to reach you?
+          </label>
+
+          <div className="flex gap-6">
+            {["Phone", "Email"].map((option) => (
+              <label
+                key={option}
+                className="flex cursor-pointer items-center gap-2"
+              >
+                <input
+                  type="radio"
+                  name="contactMethod"
+                  value={option}
+                  checked={formData.contactMethod === option}
+                  onChange={(event) =>
+                    updateField("contactMethod", event.target.value)
+                  }
+                  className="h-4 w-4"
+                />
+
+                <span className="text-gray-700">
+                  {option}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
 
         <Input
           label="Best Time to Respond"
@@ -341,6 +503,7 @@ interface InputProps {
   label: string;
   value: string;
   type?: string;
+  placeholder?: string;
   required?: boolean;
   onChange: (value: string) => void;
 }

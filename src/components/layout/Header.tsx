@@ -12,7 +12,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center">
+          <Link href="https://www.intersolutions.com" className="flex items-center">
             <Image
               src="/InterSolutions_Trademark_White.webp"
               alt="InterSolutions - Property Management Staffing Specialists"
