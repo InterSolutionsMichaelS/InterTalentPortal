@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   title: 'InterSolutions Talent',
   description: 'Find the right Professional to complete the job.',
   icons: {
-    icon: [{ url: '/icon.png', type: 'image/png' }],
-    shortcut: '/icon.png',
-    apple: '/icon.png',
+    icon: [{ url: '/icon2.png', type: 'image/png' }],
+    shortcut: '/icon2.png',
+    apple: '/icon2.png',
   },
 };
 
