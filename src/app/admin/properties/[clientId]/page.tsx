@@ -52,6 +52,9 @@ export default function AdminPropertiesPage() {
   const [deletePropertyTarget, setDeletePropertyTarget] =
     useState<Property | null>(null);
   const [propertiesError, setPropertiesError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [pageInput, setPageInput] = useState('');
 
   const filteredClients = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -102,6 +105,37 @@ export default function AdminPropertiesPage() {
     }
     void fetchProperties(clientId);
   }, [clientId, clientIdValid, fetchProperties]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [clientId]);
+
+  const totalPages = Math.ceil(properties.length / itemsPerPage);
+
+  const paginatedProperties = useMemo(
+    () =>
+      properties.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+      ),
+    [properties, currentPage, itemsPerPage]
+  );
+
+  const getPageNumbers = useCallback(() => {
+    const delta = 2;
+    const start = Math.max(
+      1,
+      Math.min(currentPage - delta, totalPages - delta * 2)
+    );
+    const end = Math.min(totalPages, start + delta * 2);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [properties.length, totalPages, currentPage]);
 
   useEffect(() => {
     if (clients.length === 0) return;
@@ -198,6 +232,92 @@ export default function AdminPropertiesPage() {
       );
     }
 
+    const renderPropertiesPaginationBar = (edge: 'top' | 'bottom') => (
+      <div
+        className={`flex flex-col gap-3 border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${
+          edge === 'top' ? 'border-b' : 'border-t'
+        }`}
+      >
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-500">Show</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-sm text-gray-500">per page</span>
+          </div>
+          <span className="text-sm text-gray-500">
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+            {Math.min(currentPage * itemsPerPage, properties.length)}{' '}
+            of {properties.length} properties
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={currentPage === 1}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50"
+          >
+            Previous
+          </button>
+          {getPageNumbers().map((pageNum) => (
+            <button
+              key={pageNum}
+              type="button"
+              onClick={() => setCurrentPage(pageNum)}
+              className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                currentPage === pageNum
+                  ? 'border-gray-900 bg-gray-900 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {pageNum}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={currentPage === totalPages}
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50"
+          >
+            Next
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Go to</span>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const page = Number(pageInput);
+                  if (page >= 1 && page <= totalPages) {
+                    setCurrentPage(page);
+                    setPageInput('');
+                  }
+                }
+              }}
+              placeholder="Page"
+              className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-center text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+          </div>
+        </div>
+      </div>
+    );
+
     return (
       <div className="p-6 md:p-8">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -282,58 +402,64 @@ export default function AdminPropertiesPage() {
               </div>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {properties.map((p) => {
-                const cityState = [p.city, p.state].filter(Boolean).join(' ');
-                const addressParts = [p.address, cityState, p.zip].filter(
-                  Boolean
-                );
-                const addressLine = addressParts.join(', ');
+            <>
+              {renderPropertiesPaginationBar('top')}
+              <div className="divide-y divide-gray-100">
+                {paginatedProperties.map((p) => {
+                  const cityState = [p.city, p.state]
+                    .filter(Boolean)
+                    .join(' ');
+                  const addressParts = [p.address, cityState, p.zip].filter(
+                    Boolean
+                  );
+                  const addressLine = addressParts.join(', ');
 
-                return (
-                  <div key={p.id} className="flex flex-col">
-                    <div className="flex items-center justify-between px-4 py-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-900">
-                          {p.name}
-                        </p>
-                        {addressLine ? (
-                          <p className="mt-0.5 truncate text-xs text-gray-500">
-                            {addressLine}
+                  return (
+                    <div key={p.id} className="flex flex-col">
+                      <div className="flex items-center justify-between px-4 py-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {p.name}
                           </p>
-                        ) : null}
+                          {addressLine ? (
+                            <p className="mt-0.5 truncate text-xs text-gray-500">
+                              {addressLine}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="ml-4 flex shrink-0 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditProperty(p);
+                              setShowEditModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDeletePropertyTarget(p);
+                              setShowDeletePropertyModal(true);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                          >
+                            🗑 Delete
+                          </button>
+                        </div>
                       </div>
-                      <div className="ml-4 flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditProperty(p);
-                            setShowEditModal(true);
-                          }}
-                          className="inline-flex items-center gap-1 rounded-md border border-orange-500 px-3 py-1.5 text-sm font-semibold text-orange-600 hover:bg-orange-50"
-                        >
-                          ✏️ Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDeletePropertyTarget(p);
-                            setShowDeletePropertyModal(true);
-                          }}
-                          className="inline-flex items-center gap-1 rounded-md border border-red-500 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                        >
-                          🗑 Delete
-                        </button>
-                      </div>
+                      <PropertyContactsSection
+                        propertyId={p.id}
+                        propertyName={p.name}
+                      />
                     </div>
-                    <PropertyContactsSection
-                      propertyId={p.id}
-                      propertyName={p.name}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              {renderPropertiesPaginationBar('bottom')}
+            </>
           )}
         </section>
       </div>

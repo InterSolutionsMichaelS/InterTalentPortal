@@ -66,6 +66,7 @@ export interface SearchFilters {
   location: string; // Combined city/state/zip input from hero
 
   // Parsed location fields (synced with hero)
+  address: string;       //added 6/1/26 for searching addresses as added to api backend
   city: string;
   state: string;
   zipCode: string;
@@ -88,6 +89,9 @@ export interface SearchFilters {
   // Office / property name filter (hero fallback when property has no zip/city)
   office: string;
 
+  /** Client portal: selected property id mirrored in URL (?propertyId=) */
+  propertyId: number | null;
+
   sortBy: 'name' | 'location' | 'profession';
   sortDirection: 'asc' | 'desc';
 
@@ -98,6 +102,7 @@ export interface SearchFilters {
 interface SearchStore extends SearchFilters {
   // Actions
   setLocation: (location: string) => void;
+  setAddress: (address: string) => void;
   setCity: (city: string) => void;
   setState: (state: string) => void;
   setZipCode: (zipCode: string) => void;
@@ -118,6 +123,7 @@ interface SearchStore extends SearchFilters {
   toggleBookmark: (profileId: string) => void;
   setShowBookmarksOnly: (show: boolean) => void;
   setOffice: (office: string) => void;
+  setPropertyId: (id: number | null) => void;
 
   // Loading actions
   setIsLoading: (loading: boolean) => void;
@@ -133,6 +139,7 @@ interface SearchStore extends SearchFilters {
 
 const initialState: SearchFilters = {
   location: '',
+  address: '',
   city: '',
   state: '',
   zipCode: '',
@@ -146,6 +153,7 @@ const initialState: SearchFilters = {
   bookmarkedIds: [],
   showBookmarksOnly: false,
   office: '',
+  propertyId: null,
   sortBy: 'name',
   sortDirection: 'asc',
   isLoading: false,
@@ -157,7 +165,7 @@ export const useSearchStore = create<SearchStore>()(
       ...initialState,
 
       setLocation: (location) => set({ location }),
-
+      setAddress: (address) => set ({ address }),
       setCity: (city) => set({ city }),
       setState: (state) => set({ state }),
       setZipCode: (zipCode) => set({ zipCode }),
@@ -233,6 +241,8 @@ export const useSearchStore = create<SearchStore>()(
 
       setOffice: (office) => set({ office: office.trim() }),
 
+      setPropertyId: (id) => set({ propertyId: id }),
+
       setSortBy: (sortBy: 'name' | 'location' | 'profession') =>
         set({ sortBy }),
       setSortDirection: (sortDirection: 'asc' | 'desc') =>
@@ -270,6 +280,7 @@ export const useSearchStore = create<SearchStore>()(
           ...initialState,
           bookmarkedIds: get().bookmarkedIds, // Keep bookmarks when clearing filters
           professionsList: get().professionsList, // Keep professions list when clearing
+          propertyId: null,
         }),
 
       /**
@@ -285,14 +296,24 @@ export const useSearchStore = create<SearchStore>()(
         const location = get().location.trim();
 
         if (!location) {
-          set({ city: '', state: '', zipCode: '' });
+          set({
+            address: '',
+            city: '',
+            state: '',
+            zipCode: '',
+          });
           return;
         }
 
         // Check if it's a zip code (5 digits)
         const zipMatch = location.match(/^\d{5}$/);
         if (zipMatch) {
-          set({ zipCode: location, city: '', state: '' });
+        set({
+          zipCode: location,
+          address: '',
+          city: '',
+          state: '',
+        });
           return;
         }
 
@@ -302,7 +323,12 @@ export const useSearchStore = create<SearchStore>()(
 
         if (stateCodeMatch) {
           // Direct state code (e.g., "CA", "IL")
-          set({ state: upperLocation, city: '', zipCode: '' });
+          set({
+            state: upperLocation,
+            address: '',
+            city: '',
+            zipCode: '',
+          });
           return;
         }
 
@@ -310,6 +336,7 @@ export const useSearchStore = create<SearchStore>()(
         if (STATE_NAME_TO_CODE[upperLocation]) {
           set({
             state: STATE_NAME_TO_CODE[upperLocation],
+            address: '',
             city: '',
             zipCode: '',
           });
@@ -326,6 +353,7 @@ export const useSearchStore = create<SearchStore>()(
           const stateCode = STATE_NAME_TO_CODE[statePart] || statePart;
 
           set({
+            address: '',
             city: cityPart,
             state: stateCode,
             zipCode: '',
@@ -334,7 +362,13 @@ export const useSearchStore = create<SearchStore>()(
         }
 
         // Default: treat as city name
-        set({ city: location, state: '', zipCode: '' });
+        // Default: treat as address
+        set({
+          address: location,
+          city: '',
+          state: '',
+          zipCode: '',
+        });
       },
 
       /**
@@ -344,10 +378,21 @@ export const useSearchStore = create<SearchStore>()(
         const state = get();
         const params = new URLSearchParams();
 
-        if (state.city) params.set('city', state.city);
-        if (state.state) params.set('state', state.state);
-        if (state.zipCode) params.set('zip', state.zipCode);
+        if (state.address) {
+          params.set('address', state.address);
+        } else {
+          if (state.city) params.set('city', state.city);
+          if (state.state) params.set('state', state.state);
+        }
+
+        if (state.zipCode) {
+          params.set('zip', state.zipCode);
+        }
         if (state.office) params.set('office', state.office);
+
+        if (state.propertyId) {
+          params.set('propertyId', String(state.propertyId));
+        }
 
         // Handle multiple keywords - join with comma
         if (state.keywords.length > 0) {

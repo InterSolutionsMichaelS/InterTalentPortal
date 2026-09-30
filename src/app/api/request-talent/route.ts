@@ -1,13 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  sendContactEmail,
-  sendTalentRequestEmail,
-} from "@/lib/email/send-email";
+import { captureInterTalentRequest }
+    from "@/lib/services/interTalentRequestService";
+import { processInitialNotification }
+  from "@/lib/services/requestNotificationEngine";
+import { sendAfterHoursCustomerEmail }
+  from "@/lib/email/send-email";
 import { db } from "@/lib/db";
 
+
+
+    const STRATEGIC_ACCOUNTS: Record<string, string> = {
+      avenue5: "Avenue5 Residential",
+      elmington: "Elmington Property Management",
+      rpm: "RPM Living",
+      assetliving: "Asset Living",
+      greystar: "Greystar",
+      resprop: "Resprop Management",
+      bedrock: "Bedrock",
+      goldoller: "GoldOller",
+    };
+
+
+    
+
+
+    
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const hostname = (
+        req.headers.get("x-forwarded-host") ??
+        req.headers.get("host") ??
+        req.nextUrl.hostname
+    ).toLowerCase();
+
+    const slug = hostname.split(".")[0];
+
+    const strategicAccount =
+      STRATEGIC_ACCOUNTS[slug] ?? null;
 
     const {
       name,
@@ -25,7 +56,23 @@ export async function POST(req: NextRequest) {
       associateId,
       associateName,
       campaign,
+      customerName,
+      propertyName,
+      propertyId,
     } = body || {};
+
+    console.log("[TALENT REQUEST HOST DEBUG]", {
+      forwardedHost: req.headers.get("x-forwarded-host"),
+      host: req.headers.get("host"),
+      nextUrlHostname: req.nextUrl.hostname,
+      hostname,
+      slug,
+      strategicAccount,
+      propertyId,
+      propertyName,
+      location,
+      requestMode,
+    });
 
     // Base validation (applies to all modes)
     if (!name || !email || !notes) {
@@ -43,105 +90,199 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Default recipient (used for GENERIC / UNAVAILABLE)
-    let toEmail = "info@intersolutions.com";
+    const strategicProperty =
+      propertyId
+          ? await db.getStrategicProperty(propertyId)
+          : null;
 
-    if (location) {
-      try {
-        const result = await db.getLocationEmail(location);
-        if (result?.email) {
-          toEmail = result.email;
-        }
-      } catch {
-        console.warn("Could not fetch location email, using fallback");
-      }
-    }
 
-    console.log("Incoming Talent Request", {
-      requestMode,
-      campaign,
-      associateId,
-      associateName,
-      personId,
-      name,
-      email,
-      phone,
-      location,
-      startDate,
-      startTime,
-      endTime,
-      toEmail,
+    const request = await captureInterTalentRequest({
+
+        portalSource: "InterTalent Portal",
+
+        strategicClientName: strategicAccount,
+
+        customerName:
+            customerName ??
+            propertyName ??
+            name,
+
+        customerEmail: email,
+
+        customerPhone: phone,
+
+        company:
+            strategicProperty?.company ??
+            strategicAccount ??
+            customerName ??
+            null,
+
+        property:
+            strategicProperty?.property ??
+            propertyName ??
+            null,
+
+        location,
+
+        zipCode: null,
+
+        associateId: associateId
+            ?? personId
+            ?? null,
+
+        associateName,
+
+        jobType: requestMode,
+
+        shiftDetails: [
+            startTime,
+            endTime,
+        ]
+        .filter(Boolean)
+        .join(" - "),
+
+        startDate,
+        startTime,
+        endTime,
+
+        campaign,
+
+        notes,
+
     });
 
-    switch (requestMode) {
-      case "ASSOCIATE": {
-        if (!associateName) {
-          return NextResponse.json(
-            { error: "Associate name required for associate request" },
-            { status: 400 }
+    /*
+    if (request.status === "After Hours") {
+
+      try {
+
+        const customerEmailResult =
+          await sendAfterHoursCustomerEmail({
+
+            toEmail: email,
+
+            contactFirstName: name,
+
+            customerName:
+                strategicProperty?.company ??
+                customerName,
+
+            propertyName:
+                strategicProperty?.property ??
+                propertyName,
+
+            officeName: request.officeName,
+
+            positionTitle:
+              associateName ??
+              requestMode,
+
+            startDate,
+
+            schedule: [
+              startTime,
+              endTime,
+            ]
+              .filter(Boolean)
+              .join(" - "),
+          });
+
+        if (!customerEmailResult.success) {
+
+          console.error(
+            "After-hours customer email failed:",
+            customerEmailResult.error
           );
+
         }
 
-        // 🔑 Associate requests go through Contact email (office-aware)
-        await sendContactEmail({
-          toEmail, // office / branch email
-          profileName: associateName,
-          personId,
-          location: location || "Not specified",
-          requesterName: name,
-          requesterEmail: email,
-          requesterPhone: phone,
-          comment: notes,
-          campaign,
-          startDate,
-          startTime,
-          endTime,
-        });
+      }
+      catch (error) {
 
-        break;
+        console.error(
+          "Unexpected after-hours email failure:",
+          error
+        );
+
       }
 
-      case "UNAVAILABLE": {
-        // Escalation path – no associate
-        await sendTalentRequestEmail({
-          toEmail, // InterTalent / fallback inbox
-          requesterName: name,
-          requesterEmail: email,
-          requesterPhone: phone,
-          notes: `NO ASSOCIATES AVAILABLE\nCampaign: ${campaign ?? "N/A"}\n\n${notes}`,
-          startDate,
-          startTime,
-          endTime,
-        });
-        break;
-      }
+    }
+    else {
 
-      case "GENERIC":
-      default: {
-        // Generic staffing request
-        await sendTalentRequestEmail({
-          toEmail,
-          requesterName: name,
-          requesterEmail: email,
-          requesterPhone: phone,
-          notes,
-          startDate,
-          startTime,
-          endTime,
-        });
-        break;
+      await processInitialNotification(
+        request.requestId
+      );
+
+    }
+    */
+   // Initial office notification is ALWAYS sent immediately,
+    // regardless of office hours.
+    await processInitialNotification(
+      request.requestId
+    );
+
+    // If submitted after hours, ALSO notify the customer.
+    if (request.status === "After Hours") {
+      try {
+        const customerEmailResult =
+          await sendAfterHoursCustomerEmail({
+            toEmail: email,
+
+            contactFirstName: name,
+
+            customerName:
+              strategicProperty?.company ??
+              customerName,
+
+            propertyName:
+              strategicProperty?.property ??
+              propertyName,
+
+            officeName: request.officeName,
+
+            positionTitle:
+              associateName ??
+              requestMode,
+
+            startDate,
+
+            schedule: [
+              startTime,
+              endTime,
+            ]
+              .filter(Boolean)
+              .join(" - "),
+          });
+
+        if (!customerEmailResult.success) {
+          console.error(
+            "After-hours customer email failed:",
+            customerEmailResult.error
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Unexpected after-hours email failure:",
+          error
+        );
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: "Talent request submitted",
+      requestId: request.requestId,
+      status: request.status,
+      officeName: request.officeName,
+      officeEmail: request.officeEmail,
     });
-  } catch (error) {
-    console.error("Talent Request API Error:", error);
-    return NextResponse.json(
-      { error: "Failed to submit request" },
-      { status: 500 }
-    );
-  }
+
+    } catch (error) {
+      console.error("Talent Request API Error:", error);
+
+      return NextResponse.json(
+        { error: "Failed to submit request" },
+        { status: 500 }
+      );
+    }
 }
+

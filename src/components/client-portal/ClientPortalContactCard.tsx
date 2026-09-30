@@ -99,7 +99,20 @@ export default function ClientPortalContactCard() {
   const officeParam = searchParams.get('office');
   const urlZip = searchParams.get('zip');
 
-  const selectedProperty = useMemo(
+  const urlResolvedPropertyId = useMemo(() => {
+    const raw = searchParams.get('propertyId')?.trim() ?? '';
+    if (raw === '' || !/^\d+$/.test(raw)) return null;
+    const parsed = Number.parseInt(raw, 10);
+    if (
+      !Number.isFinite(parsed) ||
+      !properties.some((p) => p.id === parsed)
+    ) {
+      return null;
+    }
+    return parsed;
+  }, [searchParams, properties]);
+
+  const locationMatchedProperty = useMemo(
     () =>
       findMatchedProperty(
         properties,
@@ -113,13 +126,22 @@ export default function ClientPortalContactCard() {
   );
 
   const displayContacts = useMemo(() => {
-    if (!selectedProperty) {
+    if (urlResolvedPropertyId !== null) {
+      return contacts.filter(
+        (c) =>
+          c.source === 'property' &&
+          c.property_id === urlResolvedPropertyId
+      );
+    }
+
+    if (!locationMatchedProperty) {
       return [];
     }
 
     const propertyContacts = contacts.filter(
       (c) =>
-        c.source === 'property' && c.property_id === selectedProperty.id
+        c.source === 'property' &&
+        c.property_id === locationMatchedProperty.id
     );
 
     if (propertyContacts.length === 0) {
@@ -127,9 +149,22 @@ export default function ClientPortalContactCard() {
     }
 
     return propertyContacts;
-  }, [contacts, selectedProperty]);
+  }, [contacts, urlResolvedPropertyId, locationMatchedProperty]);
 
-  const atLabel = selectedProperty ? selectedProperty.name : client.name;
+  const atLabel = useMemo(() => {
+    if (urlResolvedPropertyId !== null) {
+      return (
+        properties.find((p) => p.id === urlResolvedPropertyId)?.name ??
+        client.name
+      );
+    }
+    return locationMatchedProperty ? locationMatchedProperty.name : client.name;
+  }, [
+    properties,
+    urlResolvedPropertyId,
+    locationMatchedProperty,
+    client.name,
+  ]);
 
   if (displayContacts.length === 0) return null;
 

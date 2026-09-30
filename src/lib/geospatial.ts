@@ -184,6 +184,119 @@ export async function getCityLocation(
 
   return null;
 }
+/* added 5/28/26 by MS to test search results from api */ 
+export async function getAddressLocation(
+  address: string
+): Promise<ZipLocation | null> {
+  try {
+    const controller = new AbortController();
+
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      10000
+    );
+
+    const response = await fetch(
+      `https://atlas.microsoft.com/search/address/json` +
+        `?api-version=1.0` +
+        `&query=${encodeURIComponent(address)}` +
+        `&subscription-key=${process.env.MAPS_KEY}`,
+      {
+        signal: controller.signal,
+      }
+    );
+    console.log('Azure Maps status:', response.status);
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(
+        `Azure Maps returned ${response.status}`
+      );
+      console.warn('Azure Maps returned no usable results');
+      return null;
+    }
+
+    const data = await response.json();
+
+    console.log('Azure Maps response:', JSON.stringify(data, null, 2));
+
+    if (
+      data.results &&
+      data.results.length > 0
+    ) {
+      const result = data.results[0];
+
+      return {
+        zip: address,
+        lat: result.position.lat,
+        lng: result.position.lon,
+      };
+    }
+  } catch (error) {
+    console.warn(
+      'Azure Maps address geocoding failed:',
+      error
+    );
+  }
+
+  return null;
+}
+
+export async function getAddressSuggestions(
+  query: string
+) {
+  try {
+    const controller = new AbortController();
+
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      10000
+    );
+
+    const response = await fetch(
+      `https://atlas.microsoft.com/search/address/json` +
+        `?api-version=1.0` +
+        `&countrySet=US` +
+        `&limit=5` +
+        `&query=${encodeURIComponent(query)}` +
+        `&subscription-key=${process.env.MAPS_KEY}`,
+      {
+        signal: controller.signal,
+      }
+    );
+    console.log('Azure Maps status:', response.status);
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(
+        `Azure Maps returned ${response.status}`
+      );
+
+      return [];
+    }
+
+    const data = await response.json();
+
+    return data.results.map(
+      (result: any) => ({
+        label: result.address.freeformAddress,
+        value: result.address.freeformAddress,
+        type: 'address' as const,
+      })
+    );
+
+
+  } catch (error) {
+    console.warn(
+      'Azure Maps suggestion lookup failed:',
+      error
+    );
+  }
+
+  return [];
+}
 
 /**
  * Approximate lat/lng based on first 3 digits of zip code

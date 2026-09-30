@@ -5,16 +5,13 @@
 
 import sql from 'mssql';
 import { getPool } from '../clients/azure-sql';
-import type {
-  IDatabase,
-  ProfileSearchParams,
-  PaginatedProfiles,
-  StateInfo,
-  OfficeInfo,
-  Profile,
-} from '../interface';
-import { getZipLocation, getCityLocation } from '../../geospatial';
+import type { IDatabase, ProfileSearchParams, PaginatedProfiles, StateInfo, OfficeInfo, Profile, LocationSuggestion, AnalyticsEvent, CreateInterTalentRequestInput, CreateInterTalentRequestEventInput, CreateInterTalentRequestResult, ApplyInterTalentRoutingInput,ApplyInterTalentRoutingResult, InterTalentRequestHeader, PendingWorkflowAction, RecordWorkflowActionInput } from '../interface';
+import type { Ad } from '@/types/ad';
+import { getZipLocation, getCityLocation, getAddressLocation } from '../../geospatial';
+import type { InterTalentNotificationEmailParams, CustomerRequestStatusEmailParams } from '@/lib/email/send-email';
 
+const ADS_TABLE =
+  process.env.AZURE_SQL_ADS_TABLE || 'dbo.Ads';
 // Table names configurable via environment variables
 const PROFILE_TABLE = process.env.AZURE_SQL_PROFILE_TABLE || 'RayTestShowcase';
 const LOCATION_EMAIL_TABLE =
@@ -507,12 +504,20 @@ export class AzureSqlDatabase implements IDatabase {
       zipCode,
       zipCodes,
       radius,
+      address,
       office,
       page = 1,
       limit = 20,
       sortBy = 'name',
       sortDirection = 'asc',
     } = params;
+
+    const effectiveRadius =
+      radius && radius > 0
+        ? radius
+        : address
+          ? 15
+          : undefined;
 
     const activeCondition = this.getActiveCondition();
     const conditions: string[] = [activeCondition];
@@ -529,7 +534,7 @@ export class AzureSqlDatabase implements IDatabase {
           request.input(paramName, sql.NVarChar(sql.MAX), `%${kw.trim()}%`);
           return `(ProfessionalSummary LIKE @${paramName} OR Name LIKE @${paramName} OR City LIKE @${paramName} OR Skill LIKE @${paramName})`;
         })
-        .join(' OR ');
+        .join(' AND ');
       conditions.push(`(${keywordConditions})`);
     }
 
@@ -551,10 +556,24 @@ export class AzureSqlDatabase implements IDatabase {
       conditions.push('Office = @office');
     }
 
+    console.log(
+      `Using effective radius: ${effectiveRadius} miles`
+    );
+
+
+    console.log({
+      address,
+      city,
+      state,
+      zipCode,
+      zipCodes,
+      radius,
+      effectiveRadius,
+    });
     // ═══════════════════════════════════════════════════════════════
     // RADIUS SEARCH - Uses Azure SQL GEOGRAPHY for fast spatial queries
     // ═══════════════════════════════════════════════════════════════
-    if (radius && radius > 0) {
+    if (effectiveRadius) {
       const hasGeoSupport = await this.checkGeoLocationSupport();
 
       // Collect center zip codes
@@ -568,7 +587,45 @@ export class AzureSqlDatabase implements IDatabase {
       // Geocode ALL zip codes to get center points
       const centers: Array<{ lat: number; lng: number; zipCode: string }> = [];
 
-      if (centerZipCodes.length > 0) {
+      console.log('ADDRESS PARAM RECEIVED:', address);
+
+      // Address-based search center added on 5/28/26 by MS for address searching 
+      if (address) {
+        
+        const location = await getAddressLocation(address);
+
+        if (location) {
+          centers.push({
+            lat: location.lat,
+            lng: location.lng,
+            zipCode: address,
+          });
+
+          console.log(
+            `Address geocoded successfully: (${location.lat}, ${location.lng})`
+          );
+        } else {
+          console.log('Address geocode failed. Trying city lookup...');
+
+          const cityLocation = await getCityLocation(address, state);
+
+          if (cityLocation) {
+            centers.push({
+              lat: cityLocation.lat,
+              lng: cityLocation.lng,
+              zipCode: address,
+            });
+
+            console.log(
+              `City geocoded successfully: (${cityLocation.lat}, ${cityLocation.lng})`
+            );
+          } else {
+            console.warn(`Could not geocode address or city: ${address}`);
+          }
+        }
+      }
+
+      if (!address && centerZipCodes.length > 0) {
         console.log(
           `Geocoding ${centerZipCodes.length} zip code(s) for radius search...`
         );
@@ -591,7 +648,7 @@ export class AzureSqlDatabase implements IDatabase {
         console.log(
           `Successfully geocoded ${centers.length}/${centerZipCodes.length} zip codes`
         );
-      } else if (city) {
+      } else if (!address && city) {
         // Fallback to city if no zip codes provided
         const centerLocation = await getCityLocation(city, state);
         if (centerLocation) {
@@ -619,7 +676,7 @@ export class AzureSqlDatabase implements IDatabase {
             .map((kw) => {
               return `(ProfessionalSummary LIKE '%${kw.trim().replace(/'/g, "''")}%' OR Name LIKE '%${kw.trim().replace(/'/g, "''")}%' OR City LIKE '%${kw.trim().replace(/'/g, "''")}%' OR Skill LIKE '%${kw.trim().replace(/'/g, "''")}%')`;
             })
-            .join(' OR ');
+            .join(' AND ');
           spatialConditions.push(`(${keywordConditions})`);
         }
 
@@ -640,7 +697,7 @@ export class AzureSqlDatabase implements IDatabase {
         if (centers.length > 1) {
           return this.multiCenterSpatialRadiusSearch(
             centers,
-            radius,
+            effectiveRadius,
             spatialConditions,
             page,
             limit,
@@ -652,7 +709,7 @@ export class AzureSqlDatabase implements IDatabase {
           return this.spatialRadiusSearch(
             centers[0].lat,
             centers[0].lng,
-            radius,
+            effectiveRadius,
             spatialConditions,
             page,
             limit,
@@ -781,6 +838,1036 @@ export class AzureSqlDatabase implements IDatabase {
     }));
   }
 
+  async getOfficeRoutingData() {
+    const pool = await this.getConnection();
+
+    const result = await pool.request().query(`
+      SELECT
+        Id,
+        OfficeName,
+        Division,
+        Region,
+        NotificationEmails,
+        ZipCode,
+        Latitude,
+        Longitude,
+        RadiusMiles,
+        IsActive
+      FROM Offices
+      WHERE IsActive = 1
+    `);
+
+    return result.recordset;
+  }
+
+  async getCachedLocationSuggestions(
+    query: string
+  ): Promise<LocationSuggestion[]> {
+    const pool = await this.getConnection();
+
+    const searchTerm = `%${query}%`;
+
+    const result = await pool
+      .request()
+      .input('query', sql.NVarChar(100), searchTerm)
+      .query(`
+        SELECT TOP 10
+          label,
+          value,
+          type
+        FROM LocationSuggestionCache
+        WHERE query LIKE @query
+          OR label LIKE @query
+        ORDER BY created_at DESC
+      `);
+
+    return result.recordset.map(
+      (row: Record<string, unknown>) => ({
+        label: String(row.label),
+        value: String(row.value),
+        type: row.type as
+          | 'address'
+          | 'city'
+          | 'state'
+          | 'zipcode',
+      })
+    );
+  };
+  
+
+  async saveLocationSuggestions(
+    query: string,
+    suggestions: LocationSuggestion[]
+  ): Promise<void> { 
+    const pool = await this.getConnection();
+
+    for (const suggestion of suggestions) {
+      await pool
+        .request()
+        .input('query', sql.NVarChar(100), query)
+        .input('label', sql.NVarChar(500), suggestion.label)
+        .input('value', sql.NVarChar(500), suggestion.value)
+        .input('type', sql.NVarChar(50), suggestion.type)
+        .query(`
+          INSERT INTO LocationSuggestionCache
+          (
+            query,
+            label,
+            value,
+            type
+          )
+          VALUES
+          (
+            @query,
+            @label,
+            @value,
+            @type
+          )
+        `);
+    }
+  }
+
+  async createInterTalentRequest(
+      data: CreateInterTalentRequestInput
+  ): Promise<CreateInterTalentRequestResult> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+
+          .input("portalSource", sql.NVarChar(200), data.portalSource)
+
+          .input("strategicClientName", sql.NVarChar(200), data.strategicClientName ?? null)
+
+          .input("customerName", sql.NVarChar(200), data.customerName)
+
+          .input("customerEmail", sql.NVarChar(254), data.customerEmail)
+
+          .input("customerPhone", sql.NVarChar(200), data.customerPhone ?? null)
+
+          .input("company", sql.NVarChar(200), data.company ?? null)
+
+          .input("property", sql.NVarChar(200), data.property ?? null)
+
+          .input("location", sql.NVarChar(200), data.location ?? null)
+
+          .input("zipCode", sql.NVarChar(10), data.zipCode ?? null)
+
+          .input("associateId", sql.BigInt,
+              data.associateId ? Number(data.associateId) : null
+          )
+
+          .input("associateName", sql.NVarChar(200), data.associateName ?? null)
+
+          .input("jobType", sql.NVarChar(200), data.jobType ?? null)
+
+          .input("shiftDetails", sql.NVarChar(sql.MAX), data.shiftDetails ?? null)
+
+          .input("startDate", sql.Date, data.startDate ?? null)
+
+          .input("startTime", sql.NVarChar(20), data.startTime ?? null)
+
+          .input("endTime", sql.NVarChar(20), data.endTime ?? null)
+
+          .input("campaign", sql.NVarChar(200), data.campaign ?? null)
+
+          .input("notes", sql.NVarChar(sql.MAX), data.notes ?? null)
+
+          .input("assignedOffice", sql.NVarChar(200), data.assignedOffice ?? null)
+
+          .input("distributionList", sql.NVarChar(254), data.distributionList ?? null)
+
+          .query(`
+            INSERT INTO dbo.InterTalentRequests
+            (
+                PortalSource,
+                StrategicClientName,
+
+                CustomerName,
+                CustomerEmail,
+                CustomerPhone,
+
+                Company,
+                Property,
+                Location,
+                ZipCode,
+
+                AssociateID,
+                AssociateName,
+
+                JobType,
+                ShiftDetails,
+                StartDate,
+                StartTime,
+                EndTime,
+                Campaign,
+                Notes,
+
+                AssignedOffice,
+                DistributionList
+
+            )
+
+            OUTPUT
+                INSERTED.RequestID,
+                INSERTED.Status
+
+            VALUES
+            (
+                @portalSource,
+                @strategicClientName,
+
+                @customerName,
+                @customerEmail,
+                @customerPhone,
+
+                @company,
+                @property,
+                @location,
+                @zipCode,
+
+                @associateId,
+                @associateName,
+
+                @jobType,
+                @shiftDetails,
+                @startDate,
+                @startTime,
+                @endTime,
+                @campaign,
+                @notes,
+
+                @assignedOffice,
+                @distributionList
+            )
+          `);
+
+      return {
+          requestId: result.recordset[0].RequestID,
+          status: result.recordset[0].Status
+      };
+  }
+
+  async createRequestEvent(
+      data: CreateInterTalentRequestEventInput
+  ): Promise<void> {
+
+      const pool = await this.getConnection();
+
+      await pool.request()
+
+          .input("requestId", sql.UniqueIdentifier, data.requestId)
+
+          .input("eventType", sql.NVarChar(200), data.eventType)
+
+          .input("performedByName",
+              sql.NVarChar(200),
+              data.performedByName ?? null)
+
+          .input("performedByEmail",
+              sql.NVarChar(254),
+              data.performedByEmail ?? null)
+
+          .input("notes",
+              sql.NVarChar(sql.MAX),
+              data.notes ?? null)
+
+          .input(
+              "metadata",
+              sql.NVarChar(sql.MAX),
+              data.metadata
+                  ? JSON.stringify(data.metadata)
+                  : null
+          )
+
+          .query(`
+            INSERT INTO dbo.InterTalentRequestEvents
+            (
+                RequestID,
+                EventType,
+                PerformedByName,
+                PerformedByEmail,
+                Notes,
+                Metadata
+            )
+            VALUES
+            (
+                @requestId,
+                @eventType,
+                @performedByName,
+                @performedByEmail,
+                @notes,
+                @metadata
+            )
+          `);
+  }
+
+  async applyInterTalentRouting(
+      data: ApplyInterTalentRoutingInput
+  ): Promise<ApplyInterTalentRoutingResult> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+        .input("requestId", sql.UniqueIdentifier, data.requestId)
+        .input("officeName", sql.NVarChar(200), data.officeName)
+        .query(`
+            EXEC dbo.usp_ApplyInterTalentRouting
+                @RequestID = @requestId,
+                @OfficeName = @officeName
+        `);
+
+    return result.recordset[0];
+  }
+
+  async getPendingWorkflowActions(): Promise<PendingWorkflowAction[]> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request().query(`
+          EXEC dbo.usp_GetInterTalentPendingActions
+      `);
+
+      return result.recordset.map(row => ({
+          requestId: row.RequestID,
+          actionType: row.ActionType,
+          status: row.Status,
+          portalSource: row.PortalSource,
+          assignedOffice: row.AssignedOffice,
+          division: row.Division,
+          region: row.Region,
+          distributionList: row.DistributionList,
+          customerName: row.CustomerName,
+          customerEmail: row.CustomerEmail,
+          associateName: row.AssociateName,
+          jobType: row.JobType,
+          actionDueDateUTC: row.ActionDueDateUTC,
+          responseBusinessMinutes: row.ResponseBusinessMinutes,
+          slaStatus: row.SLAStatus,
+          acknowledgementToken: row.AcknowledgementToken,
+      }));
+
+  }
+
+  async recordWorkflowAction(
+      input: RecordWorkflowActionInput
+  ): Promise<void> {
+
+      const pool = await this.getConnection();
+
+      await pool.request()
+
+          .input(
+              "requestId",
+              sql.UniqueIdentifier,
+              input.requestId
+          )
+
+          .input(
+              "actionType",
+              sql.NVarChar(50),
+              input.actionType
+          )
+
+          .query(`
+              EXEC dbo.usp_RecordInterTalentWorkflowAction
+                  @RequestID = @requestId,
+                  @ActionType = @actionType
+          `);
+
+  }
+
+  async getOwnershipConfirmationContext(
+      requestId: string
+  ): Promise<CustomerRequestStatusEmailParams | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+                  r.PortalSource,
+                  r.CustomerEmail AS toEmail,
+                  r.CustomerName AS customerName,
+
+                  COALESCE(
+                      s.PropertyName,
+                      r.Property
+                  ) AS propertyName,
+
+                  r.AssignedOffice AS officeName,
+
+                  COALESCE(
+                      s.PositionTitle,
+                      r.JobType
+                  ) AS positionTitle,
+
+                  COALESCE(
+                      CONVERT(nvarchar(30), s.StartDate, 23),
+                      CONVERT(nvarchar(30), r.StartDate, 23)
+                  ) AS startDate,
+
+                  COALESCE(
+                      s.Schedule,
+                      r.ShiftDetails
+                  ) AS schedule
+
+              FROM dbo.InterTalentRequests r
+
+              LEFT JOIN dbo.StaffingRequests s
+                  ON s.RequestID = r.RequestID
+
+              WHERE r.RequestID = @requestId;
+          `);
+
+      const row = result.recordset[0];
+
+      return row ?? null;
+  }
+
+  async getStrategicProperty(propertyId: number) {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("propertyId", sql.Int, propertyId)
+          .query(`
+              SELECT
+                  c.Name AS company,
+                  p.Name AS property
+              FROM dbo.properties p
+              INNER JOIN dbo.clients c
+                  ON c.Id = p.client_Id
+              WHERE p.Id = @propertyId
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  public async getEscalationRecipients(
+      requestId: string,
+      includeRVP: boolean,
+      includeDOS: boolean
+  ): Promise<string> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+            SELECT
+                o.NotificationEmails,
+
+                COALESCE(
+                    STRING_AGG(
+                        CASE
+                            WHEN e.EscalationRole = 'RVP'
+                            THEN e.EmailAddress
+                        END,
+                        ';'
+                    ),
+                    ''
+                ) AS RVPEmails,
+
+                COALESCE(
+                    STRING_AGG(
+                        CASE
+                            WHEN e.EscalationRole = 'DoS'
+                            THEN e.EmailAddress
+                        END,
+                        ';'
+                    ),
+                    ''
+                ) AS DOSEmails
+
+            FROM dbo.InterTalentRequests r
+
+            JOIN dbo.Offices o
+                ON o.OfficeName = r.AssignedOffice
+
+            LEFT JOIN dbo.EscalationEmailList e
+                ON e.IsActive = 1
+              AND (
+                    (
+                        e.EscalationRole = 'RVP'
+                        AND e.Region = o.Region
+                    )
+                    OR
+                    e.EscalationRole = 'DoS'
+              )
+
+            WHERE r.RequestID = @requestId
+
+            GROUP BY
+                o.NotificationEmails;
+          `);
+
+        const row = result.recordset[0];
+
+        if (!row) {
+          return "";
+        }
+
+        return [
+          row.NotificationEmails,
+          includeRVP ? row.RVPEmails : null,
+          includeDOS ? row.DOSEmails : null
+        ]
+          .filter((value): value is string =>
+            typeof value === "string" &&
+            value.trim() !== ""
+          )
+          .join(";");
+
+      
+  }
+
+  async createStaffingRequest(data: {
+    requestId: string;
+    officeId: number;
+    officeName: string;
+    officeEmail: string;
+
+    managementCompany?: string;
+    propertyName?: string;
+    streetAddress?: string;
+    city?: string;
+    state?: string;
+
+    positionType?: string;
+    positionTitle?: string;
+    duties?: string;
+    startDate?: string;
+    schedule?: string;
+
+    contactTitle?: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+
+    contactMethod?: string;
+    bestTimeToRespond?: string;
+  }): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool.request()
+      .input('requestId', sql.UniqueIdentifier, data.requestId)
+      .input('officeId', sql.Int, data.officeId)
+      .input('officeName', sql.NVarChar(100), data.officeName)
+      .input('officeEmail', sql.NVarChar(255), data.officeEmail)
+
+      .input('managementCompany', sql.NVarChar(255), data.managementCompany ?? null)
+      .input('propertyName', sql.NVarChar(255), data.propertyName ?? null)
+      .input('streetAddress', sql.NVarChar(255), data.streetAddress ?? null)
+      .input('city', sql.NVarChar(100), data.city ?? null)
+      .input('state', sql.NVarChar(10), data.state ?? null)
+
+      .input('positionType', sql.NVarChar(100), data.positionType ?? null)
+      .input('positionTitle', sql.NVarChar(255), data.positionTitle ?? null)
+      .input('duties', sql.NVarChar(sql.MAX), data.duties ?? null)
+      .input('startDate', sql.Date, data.startDate || null)
+      .input('schedule', sql.NVarChar(sql.MAX), data.schedule ?? null)
+
+      .input('contactTitle', sql.NVarChar(200), data.contactTitle ?? null)
+      .input('firstName', sql.NVarChar(100), data.firstName ?? null)
+      .input('lastName', sql.NVarChar(100), data.lastName ?? null)
+      .input('phone', sql.NVarChar(50), data.phone ?? null)
+      .input('email', sql.NVarChar(255), data.email ?? null)
+
+      .input('contactMethod', sql.NVarChar(20), data.contactMethod ?? null)
+      .input('bestTimeToRespond', sql.NVarChar(100), data.bestTimeToRespond ?? null)
+
+      .query(`
+        INSERT INTO StaffingRequests (
+          RequestID,
+          SubmittedAt,
+          OfficeId,
+          OfficeName,
+          OfficeEmail,
+          ManagementCompany,
+          PropertyName,
+          StreetAddress,
+          City,
+          State,
+          PositionType,
+          PositionTitle,
+          Duties,
+          StartDate,
+          Schedule,
+          FirstName,
+          LastName,
+          Phone,
+          Email,
+          ContactMethod,
+          BestTimeToRespond,
+          ContactTitle
+        )
+        VALUES (
+          @requestId,
+          GETDATE(),
+          @officeId,
+          @officeName,
+          @officeEmail,
+          @managementCompany,
+          @propertyName,
+          @streetAddress,
+          @city,
+          @state,
+          @positionType,
+          @positionTitle,
+          @duties,
+          @startDate,
+          @schedule,
+          @firstName,
+          @lastName,
+          @phone,
+          @email,
+          @contactMethod,
+          @bestTimeToRespond,
+          @contactTitle
+        )
+      `);
+  }
+
+  async getClients(): Promise<string[]> {
+    const pool = await this.getConnection();
+
+    const result = await pool.request().query(`
+      SELECT slug
+      FROM clients
+      ORDER BY slug
+    `);
+
+    return result.recordset.map(
+      (row: Record<string, unknown>) =>
+        row.slug as string
+    );
+  }
+
+  async getAds(): Promise<Ad[]> {
+    const pool = await this.getConnection();
+
+    const result = await pool.request().query(`
+      SELECT
+        Id,
+        Title,
+        ImageData,
+        ImageMimeType,
+        DestinationUrl,
+        IsActive,
+        DisplayOrder,
+        TargetAccounts
+      FROM ${ADS_TABLE}
+      ORDER BY DisplayOrder ASC
+    `);
+
+    return result.recordset.map((row) => {
+      const imageUrl =
+        row.ImageData && row.ImageMimeType
+          ? `data:${row.ImageMimeType};base64,${Buffer.from(row.ImageData).toString('base64')}`
+          : '';
+
+      return {
+        id: row.Id,
+        title: row.Title,
+        imageUrl,
+        destinationUrl: row.DestinationUrl,
+        isActive: row.IsActive,
+        displayOrder: row.DisplayOrder,
+        targetAccounts: row.TargetAccounts
+          ? JSON.parse(row.TargetAccounts)
+          : [],
+      };
+    });
+  }
+
+  async getRequestHeader(
+      requestId: string
+  ): Promise<InterTalentRequestHeader | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+                  RequestID,
+                  PortalSource,
+                  AssignedOffice,
+                  DistributionList,
+                  OfficeIsOpenAtSubmission
+              FROM dbo.InterTalentRequests
+              WHERE RequestID=@requestId
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  async getTalentNotificationContext(
+      requestId: string
+  ): Promise<InterTalentNotificationEmailParams | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+
+                  DistributionList    AS toEmail,
+
+                  'Associate/Talent Request' AS requestType,
+
+                  AssignedOffice      AS officeName,
+
+                  RequestID             AS requestId,
+                  AcknowledgementToken  AS acknowledgementToken,
+
+                  AssociateName       AS profileName,
+                  AssociateID         AS personId,
+
+                  Location            AS location,
+
+                  CustomerName        AS requesterName,
+                  CustomerEmail       AS requesterEmail,
+                  CustomerPhone       AS requesterPhone,
+
+                  Notes               AS comment,
+
+                  Campaign            AS campaign,
+
+                  StartDate           AS startDate,
+                  StartTime           AS startTime,
+                  EndTime             AS endTime,
+
+                  Property            AS propertyName,
+
+                  StrategicClientName AS strategicAccount
+
+              FROM dbo.InterTalentRequests
+              WHERE RequestID = @requestId;
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  async getStaffingNotificationContext(
+      requestId: string
+  ): Promise<InterTalentNotificationEmailParams | null> {
+
+      const pool = await this.getConnection();
+
+      const result = await pool.request()
+          .input("requestId", sql.UniqueIdentifier, requestId)
+          .query(`
+              SELECT
+
+                  r.DistributionList  AS toEmail,
+
+                  'Staffing Request'  AS requestType,
+
+                  r.AssignedOffice    AS officeName,
+
+                  r.RequestID            AS requestId,
+                  r.AcknowledgementToken AS acknowledgementToken,
+
+                  s.ManagementCompany AS managementCompany,
+                  s.PropertyName      AS propertyName,
+                  s.StreetAddress     AS streetAddress,
+                  s.City              AS city,
+                  s.State             AS state,
+
+                  s.PositionType      AS positionType,
+                  s.PositionTitle     AS positionTitle,
+                  s.Duties            AS duties,
+
+                  s.StartDate         AS startDate,
+                  s.Schedule          AS schedule,
+
+                  s.ContactTitle      AS contactTitle,
+                  s.FirstName         AS firstName,
+                  s.LastName          AS lastName,
+                  s.Phone             AS phone,
+                  s.Email             AS email,
+                  s.ContactMethod     AS contactMethod,
+                  s.BestTimeToRespond AS bestTimeToRespond
+
+              FROM dbo.StaffingRequests s
+              JOIN dbo.InterTalentRequests r
+                  ON r.RequestID = s.RequestID
+              WHERE s.RequestID = @requestId;
+          `);
+
+      return result.recordset[0] ?? null;
+  }
+
+  async recordInitialNotification(
+      data: {
+          requestId: string;
+          recipientEmail: string;
+      }
+  ): Promise<void> {
+
+      const pool = await this.getConnection();
+
+      await pool.request()
+
+          .input(
+              "requestId",
+              sql.UniqueIdentifier,
+              data.requestId
+          )
+
+          .query(`
+              UPDATE dbo.InterTalentRequests
+              SET
+                  FirstNotificationSentDateTimeUTC = SYSUTCDATETIME(),
+                  UpdatedAt = SYSUTCDATETIME()
+              WHERE RequestID = @requestId
+          `);
+  }
+
+
+  async insertAnalyticsEvent(
+    event: AnalyticsEvent
+  ): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool
+      .request()
+      .input(
+        'eventType',
+        sql.NVarChar(100),
+        event.eventType
+      )
+      .input(
+        'page',
+        sql.NVarChar(100),
+        event.page
+      )
+      .input(
+        'component',
+        sql.NVarChar(100),
+        event.component
+      )
+      .input(
+        'value',
+        sql.NVarChar(500),
+        event.value ?? null
+      )
+      .input(
+        'metadata',
+        sql.NVarChar(sql.MAX),
+        event.metadata
+          ? JSON.stringify(event.metadata)
+          : null
+      )
+      .query(`
+        INSERT INTO AnalyticsEvents
+        (
+          EventType,
+          Page,
+          Component,
+          Value,
+          Metadata,
+          CreatedAt
+        )
+        VALUES
+        (
+          @eventType,
+          @page,
+          @component,
+          @value,
+          @metadata,
+          GETUTCDATE()
+        )
+      `);
+  }
+
+  async createAd(data: {
+    title: string;
+    imageData: number[];
+    imageMimeType: string;
+    destinationUrl: string;
+    displayOrder: number;
+    isActive: boolean;
+    targetAccounts: string[];
+  }): Promise<void> {
+
+    const pool = await this.getConnection();
+
+    const buffer = Buffer.from(data.imageData);
+
+    await pool
+      .request()
+      .input('title', sql.NVarChar(200), data.title)
+      .input('imageData', sql.VarBinary(sql.MAX), buffer)
+      .input('imageMimeType', sql.NVarChar(50), data.imageMimeType)
+      .input('destinationUrl', sql.NVarChar(500), data.destinationUrl)
+      .input('displayOrder', sql.Int, data.displayOrder)
+      .input('isActive', sql.Bit, data.isActive)
+      .input(
+        'targetAccounts',
+        sql.NVarChar(sql.MAX),
+        JSON.stringify(data.targetAccounts)
+      )
+      .query(`
+        INSERT INTO ${ADS_TABLE}
+        (
+          Title,
+          ImageData,
+          ImageMimeType,
+          DestinationUrl,
+          DisplayOrder,
+          IsActive,
+          TargetAccounts
+        )
+        VALUES
+        (
+          @title,
+          @imageData,
+          @imageMimeType,
+          @destinationUrl,
+          @displayOrder,
+          @isActive,
+          @targetAccounts
+        )
+      `);
+  }
+
+  async deleteAd(id: number): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool
+      .request()
+      .input('id', sql.Int, id)
+      .query(`
+        DELETE FROM ${ADS_TABLE}
+        WHERE Id = @id
+      `);
+  }
+
+  async updateAd(
+    id: number,
+    data: Partial<{
+      title: string;
+      imageData: number[];
+      imageMimeType: string;
+      destinationUrl: string;
+      displayOrder: number;
+      isActive: boolean;
+      targetAccounts: string[];
+    }>
+  ): Promise<void> {
+    const pool = await this.getConnection();
+
+    const request = pool.request().input('id', sql.Int, id);
+    const updates: string[] = [];
+
+    if (data.title !== undefined) {
+      updates.push('Title = @title');
+      request.input('title', sql.NVarChar(200), data.title);
+    }
+
+    if (data.destinationUrl !== undefined) {
+      updates.push('DestinationUrl = @destinationUrl');
+      request.input('destinationUrl', sql.NVarChar(500), data.destinationUrl);
+    }
+
+    if (data.displayOrder !== undefined) {
+      updates.push('DisplayOrder = @displayOrder');
+      request.input('displayOrder', sql.Int, data.displayOrder);
+    }
+
+    if (data.isActive !== undefined) {
+      updates.push('IsActive = @isActive');
+      request.input('isActive', sql.Bit, data.isActive);
+    }
+
+    if (data.targetAccounts !== undefined) {
+      updates.push('TargetAccounts = @targetAccounts');
+      request.input(
+        'targetAccounts',
+        sql.NVarChar(sql.MAX),
+        JSON.stringify(data.targetAccounts)
+      );
+    }
+
+    if (data.imageData !== undefined && data.imageMimeType !== undefined) {
+      updates.push('ImageData = @imageData');
+      updates.push('ImageMimeType = @imageMimeType');
+
+      request.input(
+        'imageData',
+        sql.VarBinary(sql.MAX),
+        Buffer.from(data.imageData)
+      );
+
+      request.input(
+        'imageMimeType',
+        sql.NVarChar(50),
+        data.imageMimeType
+      );
+    }
+
+    if (updates.length === 0) return;
+
+    await request.query(`
+      UPDATE ${ADS_TABLE}
+      SET ${updates.join(', ')}
+      WHERE Id = @id
+    `);
+  }
+  
+  async getLocationSuggestion(
+    query: string
+  ): Promise<LocationSuggestion[]> {
+    const pool = await this.getConnection();
+
+    const searchTerm = `%${query}%`;
+
+    console.log('Suggestion query:', query);
+
+    const result = await pool
+      .request()
+      .input('query', sql.NVarChar(100), searchTerm)
+      .query(`
+        SELECT DISTINCT TOP 10
+          Address,
+          City,
+          State,
+          ZipCode
+        FROM ${PROFILE_TABLE}
+        WHERE Address IS NOT NULL
+          AND City IS NOT NULL
+          AND State IS NOT NULL
+          AND ZipCode IS NOT NULL
+          AND LTRIM(RTRIM(City)) <> ''
+          AND LTRIM(RTRIM(State)) <> ''
+          AND ( Address LIKE @query
+            OR City LIKE @query
+            OR State LIKE @query
+            OR ZipCode LIKE @query
+          )
+        ORDER BY Address, City, State
+      `);
+
+    return result.recordset.map((row: Record<string, unknown>) => {
+      const address = String(row.Address ?? '').trim();
+      const city = String(row.City ?? '').trim();
+      const state = String(row.State ?? '').trim();
+      const zipCode = String(row.ZipCode ?? '').trim();
+
+      return {
+        label: `${address}, ${city}, ${state} ${zipCode}`,
+        value: `${address} ${city} ${state} ${zipCode}`,
+        type: 'address' as const,
+      };
+    });
+  }
+
   async insertProfiles(profiles: Profile[]): Promise<void> {
     const pool = await this.getConnection();
     for (const profile of profiles) {
@@ -870,6 +1957,93 @@ export class AzureSqlDatabase implements IDatabase {
     }
   }
 
+  async insertTalentRequest(data: {
+    name: string;
+    email: string;
+    phone?: string;
+    notes: string;
+    location?: string;
+    personId?: string;
+    associateId?: string;
+    associateName?: string;
+    startDate?: string;
+    startTime?: string;
+    endTime?: string;
+    requestMode?: string;
+    campaign?: string;
+    customerName?: string;
+    strategicAccount?: string | null;
+    propertyName?: string | null;
+  }): Promise<void> {
+    const pool = await this.getConnection();
+
+    await pool.request()
+      .input('name', sql.NVarChar(200), data.name)
+      .input('email', sql.NVarChar(255), data.email)
+      .input('phone', sql.NVarChar(25), data.phone ?? null)
+      .input('notes', sql.NVarChar(sql.MAX), data.notes)
+      .input('location', sql.NVarChar(100), data.location ?? null)
+
+      // ✅ FIXED: bigint instead of string
+      .input('personId', sql.BigInt, data.personId ? Number(data.personId) : null)
+
+      .input('associateId', sql.NVarChar(50), data.associateId ?? null)
+      .input('associateName', sql.NVarChar(100), data.associateName ?? null)
+
+      .input('startDate', sql.Date, data.startDate ?? null)
+      .input('startTime', sql.NVarChar(20), data.startTime ?? null)
+      .input('endTime', sql.NVarChar(20), data.endTime ?? null)
+
+      .input('requestMode', sql.NVarChar(50), data.requestMode ?? null)
+      .input('campaign', sql.NVarChar(100), data.campaign ?? null)
+
+      // ✅ matches DB exactly (nvarchar(200))
+      .input('customerName', sql.NVarChar(200), data.customerName ?? null)
+
+      .input('strategicAccount', sql.NVarChar(100), data.strategicAccount ?? null)
+      .input('propertyName', sql.NVarChar(200), data.propertyName ?? null)
+
+      .query(`
+        INSERT INTO TalentRequests (
+          Name,
+          Email,
+          Phone,
+          Notes,
+          Location,
+          PersonId,
+          AssociateId,
+          AssociateName,
+          StartDate,
+          StartTime,
+          EndTime,
+          RequestMode,
+          Campaign,
+          CustomerName,
+          StrategicAccount,
+          propertyName,
+          CreatedAt
+        )
+        VALUES (
+          @name,
+          @email,
+          @phone,
+          @notes,
+          @location,
+          @personId,
+          @associateId,
+          @associateName,
+          @startDate,
+          @startTime,
+          @endTime,
+          @requestMode,
+          @campaign,
+          @customerName,
+          @strategicAccount,
+          @propertyName,
+          GETDATE()
+        )
+      `);
+  }
   /**
    * Get office email by location
    * For Azure SQL, we use the Office column from the main table to map to emails

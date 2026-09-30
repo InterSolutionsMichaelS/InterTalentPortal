@@ -45,6 +45,9 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city');
     if (city) params.city = city;
 
+    const address = searchParams.get('address');
+    if (address) params.address = address;
+
     const office = searchParams.get('office');
     if (office) params.office = office;
 
@@ -101,6 +104,7 @@ export async function GET(request: NextRequest) {
           professionTypes: params.professionTypes || null,
           state: params.state || null,
           city: params.city || null,
+          address: params.address || null,
           office: params.office || null,
           keywords: params.keywords || null,
           zipCodes: params.zipCodes || null,

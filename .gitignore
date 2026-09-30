@@ -51,3 +51,4 @@ next-env.d.ts
 deploy/
 *.zip
 scripts/python/zip_coordinates_cache.json
+scripts/python/populate_geolocation.py

@@ -1,12 +1,15 @@
 import HeroSearch from '@/components/home/HeroSearch';
 import BlueBanner from '@/components/home/BlueBanner';
+import AdsPanel from '@/components/AdsPanel/AdsPanel';
 import SearchFilters from '@/components/search/SearchFilters';
 import ProfileResults from '@/components/search/ProfileResults';
 import EmptyState from '@/components/ui/EmptyState';
 import SearchParamsSyncer from '@/components/search/SearchParamsSyncer';
 import ScrollToTop from '@/components/ui/ScrollToTop';
 import LoadingManager from '@/components/ui/LoadingManager';
+import RequestTalentClient from '@/app/(marketing)/request-talent/request-talent-client';
 import InjectTalentModal from '@/components/search/InjectTalentModal';
+import WelcomeMessage from '../../components/WelcomeMessage';
 import { db } from '@/lib/db';
 
 // 🔒 Force this page to always fetch fresh data (server-rendered)
@@ -29,10 +32,12 @@ function clean(value?: string): string | undefined {
   return v.length > 0 ? v : undefined;
 }
 
+
 // Helper function to build search params string for API calls
 function buildSearchParams(params: {
   keywords?: string;
   zipCodes?: string;
+  address?: string;
   city?: string;
   state?: string;
   zipCode?: string;
@@ -46,6 +51,7 @@ function buildSearchParams(params: {
 
   if (params.keywords) searchParams.set('keywords', params.keywords);
   if (params.zipCodes) searchParams.set('zipCodes', params.zipCodes);
+  if (params.address) searchParams.set('address', params.address);
   if (params.city) searchParams.set('city', params.city);
   if (params.state) searchParams.set('state', params.state);
   if (params.zipCode) searchParams.set('zip', params.zipCode);
@@ -66,13 +72,18 @@ export default async function Home({
 }) {
   const params = await searchParams;
 
+
   // Extract + normalize search parameters (EMPTY STRINGS => undefined)
   const keywordsRaw = typeof params.keywords === 'string' ? params.keywords : undefined;
   const zipCodesRaw = typeof params.zipCodes === 'string' ? params.zipCodes : undefined;
   const city = clean(typeof params.city === 'string' ? params.city : undefined);
   const state = clean(typeof params.state === 'string' ? params.state : undefined);
   const zipCode = clean(typeof params.zip === 'string' ? params.zip : undefined);
-
+  const address = clean(
+    typeof params.address === 'string'
+      ? params.address
+      : undefined
+  );
   const radius =
     typeof params.radius === 'string' && params.radius.trim() !== ''
       ? Number.parseInt(params.radius, 10)
@@ -104,6 +115,7 @@ export default async function Home({
   const hasFilters =
     (keywordsArray && keywordsArray.length > 0) ||
     (zipCodesArray && zipCodesArray.length > 0) ||
+    !!address ||
     !!city ||
     !!state ||
     !!zipCode ||
@@ -116,6 +128,7 @@ export default async function Home({
     ? await db.searchProfiles({
         keywords: keywordsArray,
         zipCodes: zipCodesArray,
+        address,
         city,
         state,
         zipCode,
@@ -133,6 +146,7 @@ export default async function Home({
   const searchKey = JSON.stringify({
     keywords: keywordsArray?.join(',') ?? '',
     zipCodes: zipCodesArray?.join(',') ?? '',
+    address: address ?? '',
     city: city ?? '',
     state: state ?? '',
     zipCode: zipCode ?? '',
@@ -150,6 +164,9 @@ export default async function Home({
 
       {/* Sync URL params with Zustand store */}
       <SearchParamsSyncer />
+
+      {/* 🔥 ADDED 4/6/26 to have request talent overlay base page */}
+      <RequestTalentClient />
 
       {/* Hero Section with Search */}
       <HeroSearch />
@@ -169,6 +186,28 @@ export default async function Home({
           <div className="flex-1">
             {/* Results Header */}
             <div className="mb-6">
+            <WelcomeMessage />
+
+            {hasFilters && (
+              <p className="text-xs text-gray-500 mb-2">
+                Showing results for:{' '}
+                <span className="font-medium text-gray-900">
+                  {[
+                    professionsArray?.join(', '),
+                    address,
+                    city && state
+                      ? `${city}, ${state}`
+                      : city || state,
+                    zipCode,
+                    safeRadius
+                      ? `${safeRadius} mi radius`
+                      : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(' • ')}
+                </span>
+              </p>
+            )}
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
                 Recommended Candidates
               </h2>
@@ -182,7 +221,7 @@ export default async function Home({
                     {result.total === 1 ? 'candidate' : 'candidates'}
                   </>
                 ) : (
-                  'No candidates found'
+                  'The Search Continues...'
                 )}
               </p>
             </div>
@@ -197,6 +236,7 @@ export default async function Home({
                 searchParams={buildSearchParams({
                   keywords: keywordsArray?.join(','),
                   zipCodes: zipCodesArray?.join(','),
+                  address,
                   city,
                   state,
                   zipCode,
@@ -210,18 +250,25 @@ export default async function Home({
             ) : (
               <InjectTalentModal>
                 <EmptyState
-                  title="No candidates available"
+                  title="It looks like our associates in your area are currently all booked!"
                   message={
                     hasFilters
-                      ? "It looks like all available talent in this area is currently assisting other properties. Try adjusting your filters, or submit a request and our team will contact you shortly."
+                      ? "The good news is we’re continuously onboarding new talent nearby. Submit a request below, and we’ll send you a selection of qualified associates who fit your property’s needs."
                       : "Submit a request and our team will contact you shortly."
                   }
-                  actionLabel="Clear all filters"
                   actionHref="/"
+                  actionLabel="Clear all filters"
+                  
                 />
               </InjectTalentModal>
             )}
           </div>
+
+          <aside className="lg:w-72 shrink-0">
+            <div className="sticky top-6">
+              <AdsPanel targetAccount="base" />
+            </div>
+          </aside>
         </div>
       </section>
 

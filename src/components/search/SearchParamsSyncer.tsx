@@ -9,11 +9,13 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSearchStore } from '@/store/searchStore';
+import { useCampaignStore } from '@/store/campaignStore'
 
 export default function SearchParamsSyncer() {
   const searchParams = useSearchParams();
 
   // Extract only setters (stable references)
+  const setAddress = useSearchStore((state) => state.setAddress);
   const setCity = useSearchStore((state) => state.setCity);
   const setState = useSearchStore((state) => state.setState);
   const setZipCode = useSearchStore((state) => state.setZipCode);
@@ -30,12 +32,19 @@ export default function SearchParamsSyncer() {
   const setShowBookmarksOnly = useSearchStore(
     (state) => state.setShowBookmarksOnly
   );
+
+  // added on 4/15 by MS for TT campaign param pasthrough 
+  const setCampaign = useCampaignStore((s) => s.setCampaign);
+  const setHydrated = useCampaignStore((s) => s.setHydrated);
+  //merged on 4/16 by MS 
   const setOffice = useSearchStore((state) => state.setOffice);
+  const setPropertyId = useSearchStore((state) => state.setPropertyId);
 
   useEffect(() => {
     // Only sync once on mount or when URL changes
 
     // Sync URL params to store
+    const address = searchParams.get('address') || '';
     const city = searchParams.get('city') || '';
     const state = searchParams.get('state') || '';
     const zip = searchParams.get('zip') || '';
@@ -54,11 +63,43 @@ export default function SearchParamsSyncer() {
       : [];
     const showBookmarks = searchParams.get('bookmarks') === 'true';
     const officeParam = searchParams.get('office') || '';
+    const propertyIdParam = searchParams.get('propertyId');
+    const propertyId =
+      propertyIdParam && /^\d+$/.test(propertyIdParam)
+        ? Number(propertyIdParam)
+        : null;
+
+    // added on 4/15 by MS for TT campaign param pasthrough 
+    const contactName = searchParams.get('contactName');
+    const customerName = searchParams.get('customerName');
+    const department = searchParams.get('department');
+    const campaignLocation = searchParams.get('location');
+
+    const hasCampaignParams =
+      contactName || customerName || department || campaignLocation;
+
+    // 👇 THEN session fallback
+    if (!hasCampaignParams) {
+      const stored = sessionStorage.getItem('campaignData');
+
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setCampaign(parsed);
+        } catch {
+          console.warn('Failed to parse session campaign data');
+        }
+      }
+    }
+
 
     // Update store (these are stable functions)
-    setCity(city);
-    setState(state);
-    setZipCode(zip);
+    setAddress(address);
+
+    setCity(address ? '' : city);
+    setState(address ? '' : state);
+    setZipCode(address ? '' : zip);
+
     setOffice(officeParam);
 
     // Clear and rebuild keywords from URL
@@ -85,10 +126,24 @@ export default function SearchParamsSyncer() {
     setRadiusEnabled(radiusEnabled);
     setSelectedProfessions(professions);
     setShowBookmarksOnly(showBookmarks);
+    setPropertyId(propertyId);
+
+    // added on 4/15 by MS for TT campaign param pasthrough 
+    if (contactName || customerName || department || campaignLocation) {
+      setCampaign({
+        contactName,
+        customerName,
+        department,
+        location: campaignLocation,
+      });
+    }
 
     // Reconstruct location string for hero search (marketing hero; client portal hero uses property/profession selects)
     let locationStr = '';
-    if (zip) {
+
+    if (address) {
+      locationStr = address;
+    } else if (zip) {
       locationStr = zip;
     } else if (city && state) {
       locationStr = `${city}, ${state}`;
@@ -97,15 +152,13 @@ export default function SearchParamsSyncer() {
     } else if (state) {
       locationStr = state;
     }
-
-    if (locationStr) {
-      setLocation(locationStr);
-    } else {
-      setLocation('');
-    }
+    
+    setLocation('');
+    
 
     // Auto-scroll to results section if there are search filters
     const hasSearchFilters =
+      !!address ||
       !!keywordsParam ||
       !!zipCodesParam ||
       !!city ||
@@ -125,6 +178,7 @@ export default function SearchParamsSyncer() {
         }
       }, 100);
     }
+    setHydrated(true);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams.toString()]); // Only depend on params string

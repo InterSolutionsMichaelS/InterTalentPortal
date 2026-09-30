@@ -3,6 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSearchStore } from '@/store/searchStore';
+import type { LocationSuggestion } from '@/lib/db/interface';
+import { trackEvent } from '@/lib/analytics/trackEvent';
+
+
+
 
 // Constants for validation
 const MAX_LOCATION_LENGTH = 50;
@@ -23,10 +28,13 @@ const sanitizeLocation = (value: string): string => {
   return value.replace(/[^a-zA-Z0-9\s,.-]/g, '').slice(0, MAX_LOCATION_LENGTH);
 };
 
+
 export default function HeroSearch() {
   const router = useRouter();
   const dropdownChangedRef = useRef(false); // Track if user changed the dropdown
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const [locationError, setLocationError] = useState('');
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
 
   // Use Zustand store for state management
   const location = useSearchStore((state) => state.location);
@@ -99,18 +107,11 @@ export default function HeroSearch() {
       // If location was a zip code, add it to zipCodes array for tag display
       if (currentZipCode) {
         addZipCode(currentZipCode);
-        // Clear the legacy single zipCode field to avoid conflicts
         setZipCode('');
-        // Clear the location input since zip code becomes a tag
-        setLocation('');
-      } else if (currentCity || currentState) {
-        // If it's a city or state, keep it displayed in the input
-        // Don't clear it because it doesn't appear as a tag
-        // User should see what they searched for
-      } else {
-        // If nothing was parsed, clear the input
-        setLocation('');
       }
+
+      setLocation('');
+      setSuggestions([]);
 
       // Build query params from store
       const params = buildQueryParams();
@@ -119,6 +120,19 @@ export default function HeroSearch() {
       // Only show loading and navigate if the search is actually different
       const currentSearch = window.location.search.substring(1);
       if (newSearch !== currentSearch) {
+
+        trackEvent({
+          eventType: 'search',
+          page: 'Home',
+          component: 'HeroSearch',
+          value: trimmedLocation,
+          metadata: {
+            profession: selectedProfession || null,
+            searchQuery: newSearch,
+            hasLocation: !!trimmedLocation,
+          },
+        });
+
         setIsLoading(true);
         router.push(`/?${newSearch}`);
       }
@@ -126,7 +140,7 @@ export default function HeroSearch() {
   };
 
   return (
-    <section className="relative bg-[#1e3a5f] text-white overflow-hidden">
+    <section className="relative bg-[#1e3a5f] text-white overflow-visible">
       {/* Background Image  Changed on 12/12/25 to Marketing image reduced size by MS*/}
       <div
         className="absolute inset-0 bg-cover bg-left bg-no-repeat sm:bg-top"
@@ -204,7 +218,7 @@ export default function HeroSearch() {
             <div className="hidden md:block w-px h-8 bg-gray-300 self-center"></div>
 
             {/* Location Input */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="relative flex-1 flex flex-col min-w-0">
               <div className="flex items-center px-4 py-3 bg-white rounded-full md:rounded-none shadow-lg md:shadow-none">
                 <svg
                   className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0"
@@ -227,13 +241,45 @@ export default function HeroSearch() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Zip, City or State"
+                  placeholder="Address, Zip, City or State"
                   value={location}
-                  onChange={(e) => {
-                    const sanitized = sanitizeLocation(e.target.value);
-                    setLocation(sanitized);
-                    if (locationError) setLocationError('');
-                  }}
+                  onChange={async (e) => {
+                  const sanitized = sanitizeLocation(e.target.value);
+
+                  setLocation(sanitized);
+
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                  }
+
+                  if (sanitized.length < 3) {
+                    setSuggestions([]);
+                    return;
+                  }
+
+                  debounceRef.current = setTimeout(async () => {
+                    try {
+                      const response = await fetch(
+                        `/api/location-suggestions?q=${encodeURIComponent(sanitized)}`
+                      );
+
+                      if (!response.ok) {
+                        throw new Error('Suggestion request failed');
+                      }
+
+                      const data = await response.json();
+
+                      setSuggestions(data);
+                    } catch (error) {
+                      console.error('Suggestion fetch failed:', error);
+                      setSuggestions([]);
+                    }
+                  }, 400);
+
+                  if (locationError) {
+                    setLocationError('');
+                  }
+                }}
                   onBlur={() => {
                     // Validate on blur if it looks like a zip code
                     const trimmed = location.trim();
@@ -257,6 +303,41 @@ export default function HeroSearch() {
                   }`}
                 />
               </div>
+                {suggestions.length > 0 && (
+                  <div
+                    className="
+                      absolute
+                      top-full
+                      left-0
+                      right-0
+                      mt-2
+                      bg-white
+                      text-black
+                      rounded-lg
+                      shadow-xl
+                      border
+                      border-gray-200
+                      z-[999]
+                      max-h-64
+                      overflow-y-auto
+                    "
+                  >
+                    {suggestions.map((s, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setLocation(s.value);
+                          setSuggestions([]);
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               {locationError && (
                 <p className="mt-1 ml-4 text-xs text-red-400">
                   {locationError}

@@ -5,6 +5,9 @@ import type { Profile } from '@/lib/db';
 import { useSearchStore } from '@/store/searchStore';
 import RequestTalentModal from '@/components/modals/RequestTalentModal';
 import { highlightKeywords } from '@/utils/highlightText';
+import { trackEvent } from '@/lib/analytics/trackEvent';
+import { useSearchParams } from "next/navigation"; //added on 6/25/26 for request talent button to include more data
+
 
 interface ProfileCardProps {
   profile: Profile;
@@ -22,6 +25,18 @@ export default function ProfileCard({
   if (!value) return '';
   return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 };
+
+  const searchParams = useSearchParams();
+
+  const requestLocation =
+    searchParams.get("address") ??
+    searchParams.get("location") ??
+    searchParams.get("zip");
+
+  const propertyName =
+    searchParams.get("propertyName") ??
+    searchParams.get("department") ??
+    undefined;
 
   // Bookmark state from Zustand store
   const bookmarkedIds = useSearchStore((state) => state.bookmarkedIds);
@@ -125,7 +140,23 @@ export default function ProfileCard({
 
               {/* Request Associate Button */}
               <button
-                onClick={() => setIsRequestModalOpen(true)}
+                onClick={() => {
+
+                  trackEvent({
+                    eventType: 'associate_request_open',
+                    page: 'Profiles',
+                    component: 'ProfileCard',
+                    value: profile.id,
+                    metadata: {
+                      associateName: `${profile.first_name} ${profile.last_initial}`,
+                      profession: profile.profession_type,
+                      city: profile.city,
+                      state: profile.state,
+                    },
+                  });
+
+                  setIsRequestModalOpen(true);
+                }}
                 className="px-5 py-2.5 bg-[#1e3a5f] hover:bg-[#2d5a8f] text-white rounded-lg font-semibold text-sm transition-colors whitespace-nowrap w-full md:w-auto"
               >
                 Request Associate
@@ -184,7 +215,25 @@ export default function ProfileCard({
 
           {/* Read More/Less Button */}
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={() => {
+
+              if (!isExpanded) {
+                trackEvent({
+                  eventType: 'profile_view',
+                  page: 'Home',
+                  component: 'ProfileCard',
+                  value: profile.id,
+                  metadata: {
+                    profession: profile.profession_type,
+                    office: profile.office,
+                    city: profile.city,
+                    state: profile.state,
+                  },
+                });
+              }
+
+              setIsExpanded(!isExpanded);
+            }}
             className="text-[#1e3a5f] hover:text-[#2d5a8f] font-medium text-sm inline-flex items-center gap-1 transition-colors"
           >
             {isExpanded ? (
@@ -231,13 +280,18 @@ export default function ProfileCard({
             onClose={() => setIsRequestModalOpen(false)}
 
             // context from profile
-            location={profile.office ?? undefined}
+            location={
+                requestLocation ??
+                profile.office ??
+                undefined
+            }
             associateId={profile.id}
             associateName={`${profile.first_name} ${profile.last_initial}.`}
             personId={profile.id}
 
             requestMode="ASSOCIATE"
             campaign="Generic"
+            propertyName={propertyName}
           />
         )}
       </>
@@ -387,13 +441,18 @@ export default function ProfileCard({
           onClose={() => setIsRequestModalOpen(false)}
 
           // context from profile
-          location={profile.office ?? undefined}
+          location={
+              requestLocation ??
+              profile.office ??
+              undefined
+          }
           associateId={profile.id}
           associateName={`${profile.first_name} ${profile.last_initial}.`}
           personId={profile.id}
 
           requestMode="ASSOCIATE"
           campaign="Generic"
+          propertyName={propertyName}
         />
       )}
     </div>

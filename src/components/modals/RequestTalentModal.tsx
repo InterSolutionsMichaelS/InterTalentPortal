@@ -1,8 +1,9 @@
 'use client';
 
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { trackEvent} from '@/lib/analytics/trackEvent';
 
 
 
@@ -20,9 +21,13 @@ interface RequestTalentModalProps {
   contactEmail?: string;
   contactPhone?: string;
   personId?: string;
+  //added customerName string for reporting talent tuesday / strategic accounts 4/30/26 
+  customerName?: string;
+  propertyName?: string; //added on 6/25/26 for more clarity in emailed requests 
 }
 
 //added logic for contact name email and phone to be pulled through. 1/27/26 MS
+//added customerName string for reporting talent tuesday / strategic accounts 4/30/26 
 export default function RequestTalentModal({
   onClose,
   location,
@@ -33,7 +38,9 @@ export default function RequestTalentModal({
   requestMode,
   contactName,
   contactEmail,
-  contactPhone
+  contactPhone,
+  customerName,
+  propertyName
 }: RequestTalentModalProps) {
   // 🔑 Single source of truth for behavior
   const mode: 'ASSOCIATE' | 'GENERIC' | 'UNAVAILABLE' =
@@ -44,24 +51,31 @@ export default function RequestTalentModal({
     name: '',
     email: '',
     phone: '',
+    propertyName: propertyName ?? '',
     notes: '',
     startDate: '',
     startTime: '',
     endTime: '',
   });
+  const searchParams = useSearchParams();
 
+  const customerNameFromUrl = searchParams.get('customerName');
+
+  const effectiveCustomerName =
+  customerNameFromUrl ?? customerName ?? null;
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
       name: contactName ?? prev.name,
       email: contactEmail ?? prev.email,
       phone: contactPhone ?? prev.phone,
+      propertyName: propertyName ?? prev.propertyName,
       notes:
   mode === 'ASSOCIATE' && associateName
     ? `Requesting associate: ${associateName}\n\n`
     : '',
     }));
-}, [contactName, contactEmail, contactPhone, associateName, mode]);
+}, [contactName, contactEmail, contactPhone, associateName, mode, propertyName]);
   useEffect(() => {
     document.body.style.overflow = 'hidden';
 
@@ -74,13 +88,19 @@ export default function RequestTalentModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  //testing for customerName coming through MS 4/30/26
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     setStatus('idle');
 
+
+    
     try {
+
+      // const res = await fetch(...)
       const res = await fetch('/api/request-talent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,13 +116,27 @@ export default function RequestTalentModal({
           personId: personId ?? null,
 
           location,
+          customerName: formData.name || effectiveCustomerName,
         }),
       });
 
       if (!res.ok) throw new Error('Request failed');
 
+      trackEvent({
+        eventType: 'talent_request_submit',
+        page: 'Home',
+        component: 'RequestTalentModal',
+        value: associateId ?? 'generic',
+        metadata: {
+          mode,
+          associateName,
+          location,
+          campaign,
+        },
+      });
+
       setStatus('success');
-      setTimeout(() => {
+     setTimeout(() => {
         window.location.href = 'https://intertalent.intersolutions.com';
       }, 1200);
     } catch (err) {
@@ -112,6 +146,7 @@ export default function RequestTalentModal({
       setIsSubmitting(false);
     }
   }
+  
   // added Start Time, End time and Start Date below on 3/5/26 Approved language as of 3/5 MS Approval through AW.
   // line 118 was : <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50 p-4"> updated on 3/17/26 MS 
   // line 119 was : <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-8 relative max-h-[90vh] overflow-y-auto"> udpated on 3/17/26 MS
@@ -159,68 +194,102 @@ export default function RequestTalentModal({
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-sm text-gray-600">Your Name</label>
+
+                {/* Replaced placeholder with label for better mobile UX (date/time inputs don’t show placeholders reliably on mobile).
+        Also removed placeholder styling since it’s no longer used. */}
+
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full border rounded-md px-3 py-2 text-gray-900"
+              />
+          </div>
+        
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Your Email</label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900"
+              />
+        </div>
+
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Phone number (optional)</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900"
+              />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm text-gray-600">
+            Property Name
+          </label>
+
           <input
             type="text"
-            placeholder="Your name"
-            required
-            value={formData.name}
+            value={formData.propertyName}
             onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
+              setFormData({
+                ...formData,
+                propertyName: e.target.value,
+              })
             }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
+            className="w-full border rounded-md px-3 py-2 text-gray-900"
           />
-
-          <input
-            type="email"
-            placeholder="Your email"
-            required
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
-          />
-
-          <input
-            type="tel"
-            placeholder="Phone number (optional)"
-            value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
-          />
+        </div>
           {/* Optional Scheduling Fields */}
 
-          <input
-            type="date"
-            placeholder="Start date"
-            value={formData.startDate}
-            onChange={(e) =>
-              setFormData({ ...formData, startDate: e.target.value })
-            }
-            className="w-full border rounded-md py-2 placeholder-gray-550 text-gray-900 appearance-none"
-          />
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Start Date</label>
+              <input
+                type="date"
+                value={formData.startDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, startDate: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900 appearance-none"
+              />
+        </div>
 
-          <input
-            type="time"
-            placeholder="Start time"
-            value={formData.startTime}
-            onChange={(e) =>
-              setFormData({ ...formData, startTime: e.target.value })
-            }
-            className="w-full border rounded-md  py-2 placeholder-gray-500 text-gray-900 appearance-none"
-          />
+        <div className="space-y-1">
+            <label className="text-sm text-gray-600">Start Time</label>
+              <input
+                type="time"
+                value={formData.startTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, startTime: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900 appearance-none"
+              />
+        </div>
 
-          <input
-            type="time"
-            placeholder="End time"
-            value={formData.endTime}
-            onChange={(e) =>
-              setFormData({ ...formData, endTime: e.target.value })
-            }
-            className="w-full border rounded-md  py-2 placeholder-gray-500 text-gray-900 appearance-none"
-          />
+        <div className="space-y-1">
+          <label className="text-sm text-gray-600">End Time</label>
+              <input
+                type="time"
+                value={formData.endTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, endTime: e.target.value })
+                }
+                className="w-full border rounded-md px-3 py-2 text-gray-900 appearance-none"
+              />
+        </div>
           {/* 🔒 Masked Employee ID (UI only) */}
           {mode === 'ASSOCIATE' && associateName && personId && (
             <p className="text-sm text-gray-500 mb-2">
@@ -235,7 +304,7 @@ export default function RequestTalentModal({
             onChange={(e) =>
               setFormData({ ...formData, notes: e.target.value })
             }
-            className="w-full border rounded-md px-3 py-2 placeholder-gray-550 text-gray-900"
+            className="w-full border rounded-md px-3 py-2 placeholder-gray-600 text-gray-900"
           />
 
           <button

@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import AzureADProvider from 'next-auth/providers/azure-ad';
 import bcrypt from 'bcryptjs';
 import sql from 'mssql';
 import { getPool } from '@/lib/db/clients/azure-sql';
@@ -9,6 +10,7 @@ const SESSION_MAX_AGE_SEC = 24 * 60 * 60; // 24 hours
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
+      id: "admin",
       name: 'Credentials',
       credentials: {
         email: { label: 'Email', type: 'email' },
@@ -71,6 +73,12 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
+    AzureADProvider({
+      clientId: process.env.AZURE_AD_CLIENT_ID!,
+      clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+      tenantId: process.env.AZURE_AD_TENANT_ID!,
+    }),
   ],
   session: {
     strategy: 'jwt',
@@ -80,19 +88,31 @@ export const authOptions: NextAuthOptions = {
     signIn: '/admin/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
-        token.id = user.id;
-        token.role = user.role;
         token.name = user.name;
         token.email = user.email;
+
+        // Admin users only
+        if (account?.provider === 'admin') {
+          token.id = (user as any).id;
+          token.role = (user as any).role;
+        }
+
+        token.provider = account?.provider;
       }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        if (token.id) {
+          session.user.id = token.id as string;
+        }
+
+        if (token.role) {
+          session.user.role = token.role as string;
+        }
         session.user.name = (token.name as string) ?? session.user.name ?? '';
         session.user.email =
           (token.email as string) ?? session.user.email ?? '';

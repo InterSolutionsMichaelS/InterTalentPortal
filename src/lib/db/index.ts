@@ -34,4 +34,10 @@ export type {
   StateInfo,
   OfficeInfo,
   LocationEmailResult,
+  AnalyticsEvent,
+  CreateInterTalentRequestInput,
+  CreateInterTalentRequestResult,
+  CreateInterTalentRequestEventInput,
+  ApplyInterTalentRoutingInput,
+  ApplyInterTalentRoutingResult,
 } from './interface';

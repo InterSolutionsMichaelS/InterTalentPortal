@@ -8,9 +8,23 @@ export default function RequestTalentClient() {
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+
+  const mode =
+    params.get('mode') || searchParams.get('mode');
+
+  const associateId =
+    params.get('associateId') || searchParams.get('associateId');
+
+  const contactEmail =
+    params.get('contactEmail') || searchParams.get('contactEmail');
+
+  if (mode || associateId || contactEmail) {
     setOpen(true);
-  }, []);
+  }
+}, [searchParams]);
+
 
   // ✅ Decode ref → personId
   const refCode = searchParams.get('ref');
@@ -21,6 +35,7 @@ export default function RequestTalentClient() {
       : undefined;
 
   
+  
   return (
     <>
       {open && (
@@ -28,7 +43,12 @@ export default function RequestTalentClient() {
           onClose={() => setOpen(false)}
 
           // existing
-          location={searchParams.get('location') ?? undefined}
+          location={
+            searchParams.get('location') ??
+            searchParams.get('address') ??
+            searchParams.get('zip') ??
+            undefined
+          }
           associateId={searchParams.get('associateId') ?? undefined}
           associateName={searchParams.get('associateName') ?? undefined}
 
@@ -50,6 +70,12 @@ export default function RequestTalentClient() {
               : searchParams.get('mode') === 'UNAVAILABLE'
               ? 'UNAVAILABLE'
               : 'GENERIC'
+          }
+          customerName={searchParams.get('customerName') ?? undefined}
+          propertyName={
+            searchParams.get('propertyName') ??
+            searchParams.get('department') ??
+            undefined
           }
         />
       )}

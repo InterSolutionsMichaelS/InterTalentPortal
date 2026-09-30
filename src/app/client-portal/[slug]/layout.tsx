@@ -7,9 +7,9 @@ import ClientPortalFooter from '@/components/client-portal/ClientPortalFooter';
 import ClientPortalHeader from '@/components/client-portal/ClientPortalHeader';
 
 const defaultIcons: Metadata['icons'] = {
-  icon: [{ url: '/icon.png', type: 'image/png' }],
-  shortcut: '/icon.png',
-  apple: '/icon.png',
+  icon: [{ url: '/icon2.png', type: 'image/png' }],
+  shortcut: '/icon2.png',
+  apple: '/icon2.png',
 };
 
 export async function generateMetadata({
