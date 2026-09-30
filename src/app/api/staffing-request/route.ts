@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    /*
     if (routing.status === "After Hours") {
       try {
         const customerEmailResult = await sendAfterHoursCustomerEmail({
@@ -156,6 +157,51 @@ export async function POST(request: NextRequest) {
       }
     } else {
       await processInitialNotification(routing.requestId);
+    }
+    */
+    
+    // Initial office notification is ALWAYS sent immediately,
+    // regardless of office hours.
+    await processInitialNotification(
+      routing.requestId
+    );
+
+    // If submitted after hours, ALSO notify the customer.
+    if (routing.status === "After Hours") {
+      try {
+        const customerEmailResult =
+          await sendAfterHoursCustomerEmail({
+            toEmail: email,
+
+            contactFirstName: firstName,
+            contactLastName: lastName,
+
+            customerName:
+              managementCompany ??
+              propertyName,
+
+            propertyName,
+            officeName: routing.officeName,
+
+            positionType,
+            positionTitle,
+
+            startDate,
+            schedule,
+          });
+
+        if (!customerEmailResult.success) {
+          console.error(
+            "After-hours customer email failed:",
+            customerEmailResult.error
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Unexpected after-hours email failure:",
+          error
+        );
+      }
     }
 
     return NextResponse.json({

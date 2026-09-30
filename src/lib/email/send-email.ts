@@ -846,19 +846,19 @@ export async function sendInterTalentNotification(
       : buildStaffingRequestHtml(params);
 
   
-  /*const TEST_NOTIFICATION_RECIPIENTS = [
+  const TEST_NOTIFICATION_RECIPIENTS = [
       "mstiles@intersolutions.com",
       "ejenkins@intersolutions.com",
       //"mconway@intersolutions.com",
-      "mvrabel@intersolutions.com",
-      "emyket@intersolutions.com",
+      //"mvrabel@intersolutions.com",
+      //"emyket@intersolutions.com",
       // "someoneelse@intersolutions.com",
-  ];*/
+  ];
 
   try {
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to:toEmail, /*TEST_NOTIFICATION_RECIPIENTS, // replace with after testing toEmail,*/
+      to: toEmail, /*TEST_NOTIFICATION_RECIPIENTS, // replace with after testing toEmail,*/
       replyTo: requesterEmail,
       subject,
       html,
@@ -898,6 +898,15 @@ export async function sendAfterHoursCustomerEmail(
     }
     const html = buildAfterHoursCustomerHtml(params);
 
+    const TEST_NOTIFICATION_RECIPIENTS = [
+      "mstiles@intersolutions.com",
+      "ejenkins@intersolutions.com",
+      //"mconway@intersolutions.com",
+      //"mvrabel@intersolutions.com",
+      //"emyket@intersolutions.com",
+      // "someoneelse@intersolutions.com",
+  ];
+
     await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: params.toEmail,
@@ -933,6 +942,15 @@ export async function sendOwnershipConfirmedEmail(
       return { success: true };
     }
     const html = buildOwnershipConfirmedHtml(params);
+
+    const TEST_NOTIFICATION_RECIPIENTS = [
+      "mstiles@intersolutions.com",
+      "ejenkins@intersolutions.com",
+      //"mconway@intersolutions.com",
+      //"mvrabel@intersolutions.com",
+      //"emyket@intersolutions.com",
+      // "someoneelse@intersolutions.com",
+  ];
 
     await transporter.sendMail({
 

@@ -22,6 +22,9 @@ import { db } from "@/lib/db";
 
 
     
+
+
+    
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -57,6 +60,19 @@ export async function POST(req: NextRequest) {
       propertyName,
       propertyId,
     } = body || {};
+
+    console.log("[TALENT REQUEST HOST DEBUG]", {
+      forwardedHost: req.headers.get("x-forwarded-host"),
+      host: req.headers.get("host"),
+      nextUrlHostname: req.nextUrl.hostname,
+      hostname,
+      slug,
+      strategicAccount,
+      propertyId,
+      propertyName,
+      location,
+      requestMode,
+    });
 
     // Base validation (applies to all modes)
     if (!name || !email || !notes) {
@@ -135,6 +151,7 @@ export async function POST(req: NextRequest) {
 
     });
 
+    /*
     if (request.status === "After Hours") {
 
       try {
@@ -196,6 +213,59 @@ export async function POST(req: NextRequest) {
         request.requestId
       );
 
+    }
+    */
+   // Initial office notification is ALWAYS sent immediately,
+    // regardless of office hours.
+    await processInitialNotification(
+      request.requestId
+    );
+
+    // If submitted after hours, ALSO notify the customer.
+    if (request.status === "After Hours") {
+      try {
+        const customerEmailResult =
+          await sendAfterHoursCustomerEmail({
+            toEmail: email,
+
+            contactFirstName: name,
+
+            customerName:
+              strategicProperty?.company ??
+              customerName,
+
+            propertyName:
+              strategicProperty?.property ??
+              propertyName,
+
+            officeName: request.officeName,
+
+            positionTitle:
+              associateName ??
+              requestMode,
+
+            startDate,
+
+            schedule: [
+              startTime,
+              endTime,
+            ]
+              .filter(Boolean)
+              .join(" - "),
+          });
+
+        if (!customerEmailResult.success) {
+          console.error(
+            "After-hours customer email failed:",
+            customerEmailResult.error
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Unexpected after-hours email failure:",
+          error
+        );
+      }
     }
 
     return NextResponse.json({
